@@ -30,7 +30,7 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
 app.use(compression());
-app.use(cors());
+app.use(cors({ origin: 'https://www.gamingdreamer.com' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -114,7 +114,7 @@ if (fs.existsSync(publicPath)) {
 } else {
   // API-only mode - serve a simple message for root path
   app.get('/', (req, res) => {
-    res.json({ 
+    res.json({
       message: 'Gaming Site API Server',
       status: 'running',
       endpoints: {
