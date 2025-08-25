@@ -258,8 +258,8 @@ export const adminAPI = {
     api.post(`/admin/users/${userId}/balance`, { amount, notes }),
   deductBalance: (userId, amount, notes = '') => 
     api.post(`/admin/users/${userId}/balance/deduct`, { amount, notes }),
-  createChallenge: (challengerId, accepterId, game, betAmount) => 
-    api.post('/admin/challenges', { challengerId, accepterId, game, betAmount }),
+  createChallenge: (challengeData) => 
+    api.post('/admin/challenges', challengeData),
   
   // Withdrawal Management
   getWithdrawals: (page = 1, limit = 10, status = '') => 

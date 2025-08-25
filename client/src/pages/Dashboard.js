@@ -83,17 +83,17 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-2 md:p-6 space-y-4 md:space-y-6 dashboard-mobile">
       {/* Welcome Section */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="text-center"
       >
-        <h1 className="text-3xl font-gaming font-bold gradient-text mb-2">
+        <h1 className="text-xl md:text-3xl font-gaming font-bold gradient-text mb-2">
           Welcome back, {user?.username}!
         </h1>
-        <p className="text-dark-300">
+        <p className="text-dark-300 text-sm md:text-base">
           Ready to challenge players and win big?
         </p>
       </motion.div>
@@ -103,13 +103,13 @@ const Dashboard = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+        className="grid mobile-grid md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6"
       >
-        <div className="gaming-card">
+        <div className="gaming-card mobile-card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-dark-400 text-sm">Balance</p>
-              <p className="text-2xl font-bold text-green-400">
+              <p className="text-dark-400 text-xs md:text-sm">Balance</p>
+              <p className="text-lg md:text-2xl font-bold text-green-400 balance-text">
                 ৳{user?.balance?.toLocaleString() || 0}
               </p>
             </div>
@@ -122,8 +122,8 @@ const Dashboard = () => {
         <div className="gaming-card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-dark-400 text-sm">Total Wins</p>
-              <p className="text-2xl font-bold text-primary-400">
+              <p className="text-dark-400 text-xs md:text-sm">Total Wins</p>
+              <p className="text-lg md:text-2xl font-bold text-primary-400">
                 {user?.totalWins || 0}
               </p>
             </div>
@@ -136,8 +136,8 @@ const Dashboard = () => {
         <div className="gaming-card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-dark-400 text-sm">Win Rate</p>
-              <p className="text-2xl font-bold text-secondary-400">
+              <p className="text-dark-400 text-xs md:text-sm">Win Rate</p>
+              <p className="text-lg md:text-2xl font-bold text-secondary-400">
                 {user?.winRate || 0}%
               </p>
             </div>
@@ -150,8 +150,8 @@ const Dashboard = () => {
         <div className="gaming-card">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-dark-400 text-sm">Total Earnings</p>
-              <p className="text-2xl font-bold text-yellow-400">
+              <p className="text-dark-400 text-xs md:text-sm">Total Earnings</p>
+              <p className="text-lg md:text-2xl font-bold text-yellow-400">
                 ৳{user?.totalEarnings?.toLocaleString() || 0}
               </p>
             </div>
@@ -167,15 +167,15 @@ const Dashboard = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6"
       >
         <Link to="/games" className="gaming-card hover:scale-105 transition-transform">
           <div className="text-center">
             <div className="w-16 h-16 bg-primary-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
               <FaGamepad className="text-2xl text-primary-400" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Browse Games</h3>
-            <p className="text-dark-400 text-sm">
+            <h3 className="text-base md:text-lg font-semibold mb-2">Browse Games</h3>
+            <p className="text-dark-400 text-xs md:text-sm">
               Find challenges in Ludo King, Free Fire, and PUBG
             </p>
           </div>
@@ -184,11 +184,11 @@ const Dashboard = () => {
         <Link to="/challenges" className="gaming-card hover:scale-105 transition-transform">
           <div className="text-center">
             <div className="w-16 h-16 bg-secondary-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <FaPlus className="text-2xl text-secondary-400" />
+              <FaTrophy className="text-2xl text-secondary-400" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Create Challenge</h3>
-            <p className="text-dark-400 text-sm">
-              Challenge other players and bet money
+            <h3 className="text-base md:text-lg font-semibold mb-2">Join Challenges</h3>
+            <p className="text-dark-400 text-xs md:text-sm">
+              Accept challenges created by admins
             </p>
           </div>
         </Link>

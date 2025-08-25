@@ -2,20 +2,29 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FaTimes, FaGamepad, FaCoins, FaClock, FaCalendarAlt } from 'react-icons/fa';
 
-const CreateChallengeModal = ({ onClose, onSubmit, userBalance }) => {
+const CreateChallengeModal = ({ onClose, onSubmit, userBalance, isAdmin = false }) => {
   const [game, setGame] = useState('Ludo King');
   const [betAmount, setBetAmount] = useState('');
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
   const [matchDuration, setMatchDuration] = useState(30);
+  const [playerCount, setPlayerCount] = useState(2);
   const [loading, setLoading] = useState(false);
   const [availableSlots, setAvailableSlots] = useState([]);
 
   const games = [
-    { id: 'Ludo King', name: 'Ludo King', icon: '🎲', description: 'Classic board game challenge' },
-    { id: 'Free Fire', name: 'Free Fire', icon: '🔫', description: 'Battle royale shooting game' },
-    { id: 'PUBG', name: 'PUBG', icon: '🎯', description: 'PlayerUnknown\'s Battlegrounds' }
+    { id: 'Ludo King', name: 'Ludo King', icon: '🎲', description: 'Classic board game challenge', supports4Player: false },
+    { id: 'Free Fire', name: 'Free Fire', icon: '🔫', description: 'Battle royale shooting game', supports4Player: true },
+    { id: 'PUBG', name: 'PUBG', icon: '🎯', description: 'PlayerUnknown\'s Battlegrounds', supports4Player: true }
   ];
+
+  // Update player count when game changes
+  useEffect(() => {
+    const selectedGame = games.find(g => g.id === game);
+    if (selectedGame && !selectedGame.supports4Player && playerCount === 4) {
+      setPlayerCount(2);
+    }
+  }, [game, playerCount]);
 
   // Generate available time slots (30-minute intervals)
   useEffect(() => {
@@ -53,7 +62,7 @@ const CreateChallengeModal = ({ onClose, onSubmit, userBalance }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!game || !betAmount || !scheduledDate || !scheduledTime) {
+    if (!game || !betAmount || !scheduledDate || !scheduledTime || !playerCount) {
       return;
     }
 
@@ -63,7 +72,7 @@ const CreateChallengeModal = ({ onClose, onSubmit, userBalance }) => {
     }
 
     const totalCost = amount; // Allow using full balance; fee handled internally
-    if (totalCost > userBalance) {
+    if (!isAdmin && totalCost > userBalance) {
       return;
     }
 
@@ -81,7 +90,7 @@ const CreateChallengeModal = ({ onClose, onSubmit, userBalance }) => {
 
     setLoading(true);
     try {
-      await onSubmit(game, amount, scheduledDateTime, matchDuration);
+      await onSubmit(game, amount, scheduledDateTime, matchDuration, playerCount);
     } catch (error) {
       console.error('Error creating challenge:', error);
     } finally {
@@ -104,7 +113,9 @@ const CreateChallengeModal = ({ onClose, onSubmit, userBalance }) => {
         <div className="p-6 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-white">Create Challenge</h2>
+            <h2 className="text-2xl font-bold text-white">
+              {isAdmin ? 'Create New Challenge' : 'Create Challenge'}
+            </h2>
             <button
               onClick={onClose}
               className="text-dark-300 hover:text-white transition-colors"
@@ -113,14 +124,16 @@ const CreateChallengeModal = ({ onClose, onSubmit, userBalance }) => {
             </button>
           </div>
 
-          {/* Balance Info */}
-          <div className="p-4 bg-dark-700 rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <FaCoins className="text-yellow-400" />
-              <span className="text-sm text-dark-300">Your Balance</span>
+          {/* Balance Info - Only show for non-admin users */}
+          {!isAdmin && (
+            <div className="p-4 bg-dark-700 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <FaCoins className="text-yellow-400" />
+                <span className="text-sm text-dark-300">Your Balance</span>
+              </div>
+              <div className="text-2xl font-bold text-white">৳{userBalance.toLocaleString()}</div>
             </div>
-            <div className="text-2xl font-bold text-white">৳{userBalance.toLocaleString()}</div>
-          </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Game Selection */}
@@ -145,11 +158,57 @@ const CreateChallengeModal = ({ onClose, onSubmit, userBalance }) => {
                       <div>
                         <div className="font-medium text-white">{gameOption.name}</div>
                         <div className="text-sm text-dark-300">{gameOption.description}</div>
+                        {gameOption.supports4Player && (
+                          <div className="text-xs text-green-400 mt-1">✓ Supports 4-player challenges</div>
+                        )}
                       </div>
                     </div>
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Player Count Selection */}
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-white">
+                Player Count
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPlayerCount(2)}
+                  className={`p-4 rounded-lg border-2 transition-all duration-200 text-center ${
+                    playerCount === 2
+                      ? 'border-primary-500 bg-primary-500/10'
+                      : 'border-dark-600 bg-dark-700 hover:border-dark-500'
+                  }`}
+                >
+                  <div className="text-2xl mb-2">👥</div>
+                  <div className="font-medium text-white">2 Players</div>
+                  <div className="text-sm text-dark-300">All Games</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlayerCount(4)}
+                  disabled={!selectedGame?.supports4Player}
+                  className={`p-4 rounded-lg border-2 transition-all duration-200 text-center ${
+                    playerCount === 4
+                      ? 'border-primary-500 bg-primary-500/10'
+                      : selectedGame?.supports4Player
+                      ? 'border-dark-600 bg-dark-700 hover:border-dark-500'
+                      : 'border-dark-600 bg-dark-800 opacity-50 cursor-not-allowed'
+                  }`}
+                >
+                  <div className="text-2xl mb-2">👥👥</div>
+                  <div className="font-medium text-white">4 Players</div>
+                  <div className="text-sm text-dark-300">PUBG & Free Fire Only</div>
+                </button>
+              </div>
+              {!selectedGame?.supports4Player && playerCount === 4 && (
+                <div className="text-sm text-yellow-400">
+                  ⚠️ 4-player challenges are only available for PUBG and Free Fire games
+                </div>
+              )}
             </div>
 
             {/* Challenge Amount */}
@@ -171,7 +230,7 @@ const CreateChallengeModal = ({ onClose, onSubmit, userBalance }) => {
               <div className="text-sm text-dark-300">
                 Minimum: ৳10 | Maximum: ৳10,000
               </div>
-              {betAmount && Number(betAmount) > userBalance && (
+              {!isAdmin && betAmount && Number(betAmount) > userBalance && (
                 <div className="text-sm text-red-400">
                   Insufficient balance. You need ৳{Number(betAmount) - userBalance} more.
                 </div>
@@ -246,13 +305,19 @@ const CreateChallengeModal = ({ onClose, onSubmit, userBalance }) => {
                     <span className="text-white">{selectedGame?.name}</span>
                   </div>
                   <div className="flex justify-between">
+                    <span className="text-dark-300">Player Count:</span>
+                    <span className="text-white">{playerCount} Players</span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-dark-300">Challenge Amount:</span>
                     <span className="text-primary-400 font-medium">৳{betAmount}</span>
                   </div>
                   
                   <div className="flex justify-between">
                     <span className="text-dark-300">Winning Prize:</span>
-                    <span className="text-green-400 font-medium">৳{Math.round(Number(betAmount) * 1.5)}</span>
+                    <span className="text-green-400 font-medium">
+                      ৳{playerCount === 4 ? Math.round(Number(betAmount) * 3) : Math.round(Number(betAmount) * 1.5)}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-dark-300">Scheduled:</span>

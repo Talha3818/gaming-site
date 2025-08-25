@@ -4,7 +4,7 @@ const challengeSchema = new mongoose.Schema({
   challenger: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: false
   },
   accepter: {
     type: mongoose.Schema.Types.ObjectId,
@@ -99,6 +99,39 @@ const challengeSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isAdminCreated: {
+    type: Boolean,
+    default: false
+  },
+  playerCount: {
+    type: Number,
+    enum: [2, 4],
+    default: 2,
+    required: true
+  },
+  participants: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    joinedAt: {
+      type: Date,
+      default: Date.now
+    },
+    isWinner: {
+      type: Boolean,
+      default: false
+    }
+  }],
+  maxParticipants: {
+    type: Number,
+    default: 2
+  },
+  challengeType: {
+    type: String,
+    enum: ['2-player', '4-player'],
+    default: '2-player'
+  },
   completedAt: {
     type: Date
   }
@@ -112,9 +145,12 @@ challengeSchema.index({ challenger: 1, status: 1 });
 challengeSchema.index({ accepter: 1, status: 1 });
 challengeSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-// Virtual for total pot (winner payout users see: both bets minus hidden 25% per player)
+// Virtual for total pot (winner payout users see: total bets minus hidden 25% per player)
 challengeSchema.virtual('totalPot').get(function() {
-  return Math.round(this.betAmount * 1.5);
+  if (this.playerCount === 4) {
+    return Math.round(this.betAmount * 3); // 4 players * betAmount * 0.75 (after 25% fee)
+  }
+  return Math.round(this.betAmount * 1.5); // 2 players * betAmount * 0.75 (after 25% fee)
 });
 
 // Virtual for total cost per player
@@ -122,53 +158,133 @@ challengeSchema.virtual('totalCostPerPlayer').get(function() {
   return this.betAmount + this.matchFee;
 });
 
-// Method to accept challenge
-challengeSchema.methods.acceptChallenge = function(accepterId) {
-  this.accepter = accepterId;
-  this.status = 'accepted';
+// Virtual for current participant count
+challengeSchema.virtual('currentParticipantCount').get(function() {
+  return this.participants.length;
+});
+
+// Virtual for available slots
+challengeSchema.virtual('availableSlots').get(function() {
+  return this.maxParticipants - this.participants.length;
+});
+
+// Method to accept challenge (updated for multiple participants)
+challengeSchema.methods.acceptChallenge = async function(userId) {
+  // Check if user is already a participant
+  const isAlreadyParticipant = this.participants.some(p => p.user.toString() === userId.toString());
+  if (isAlreadyParticipant) {
+    throw new Error('User is already a participant in this challenge');
+  }
+
+  // Check if challenge is full
+  if (this.participants.length >= this.maxParticipants) {
+    throw new Error('Challenge is already full');
+  }
+
+  // Add user to participants
+  this.participants.push({
+    user: userId,
+    joinedAt: new Date()
+  });
+
+  // If this is the first player, set them as challenger
+  if (this.participants.length === 1) {
+    this.challenger = userId;
+  }
+
+  // Update status based on participant count
+  if (this.participants.length === this.maxParticipants) {
+    this.status = 'accepted';
+  }
+
+  // For backward compatibility, keep accepter field for 2-player challenges
+  if (this.playerCount === 2 && this.participants.length === 2) {
+    this.accepter = userId;
+  }
+
   return this.save();
 };
 
-// Method to start match
+// Method to start match (updated for multiple participants)
 challengeSchema.methods.startMatch = function(roomCode) {
+  if (this.participants.length < this.maxParticipants) {
+    throw new Error('Cannot start match: not enough participants');
+  }
+  
+  // Ensure there's a challenger (first participant becomes challenger if none exists)
+  if (!this.challenger && this.participants.length > 0) {
+    this.challenger = this.participants[0].user;
+  }
+  
   this.roomCode = roomCode;
   this.status = 'in-progress';
   this.matchTime = new Date();
   return this.save();
 };
 
-// Method to complete match and distribute winnings
-challengeSchema.methods.completeMatch = async function(winnerId, loserId, winnerScreenshot) {
+// Method to complete match and distribute winnings (updated for multiple participants)
+challengeSchema.methods.completeMatch = async function(winnerIds, loserIds, winnerScreenshot) {
   if (this.status !== 'in-progress') {
     throw new Error('Match must be in progress to complete');
   }
 
   this.status = 'completed';
-  this.winner = winnerId;
-  this.loser = loserId;
-  this.winnerScreenshot = winnerScreenshot;
   this.completedAt = new Date();
 
-  // Calculate winner payout: both bets minus hidden 25% per player
-  const totalPot = Math.round(this.betAmount * 1.5);
+  // Handle winner IDs (can be array for 4-player or single for 2-player)
+  const winnerIdArray = Array.isArray(winnerIds) ? winnerIds : [winnerIds];
+  const loserIdArray = Array.isArray(loserIds) ? loserIds : [loserIds];
 
-  // Find winner and loser users
-  const Winner = require('./User');
-  const winner = await Winner.findById(winnerId);
-  const loser = await Winner.findById(loserId);
+  // Update participant winner status
+  this.participants.forEach(participant => {
+    if (winnerIdArray.includes(participant.user.toString())) {
+      participant.isWinner = true;
+    }
+  });
 
-  if (!winner || !loser) {
-    throw new Error('Winner or loser not found');
+  // Calculate total pot based on player count
+  let totalPot;
+  if (this.playerCount === 4) {
+    totalPot = Math.round(this.betAmount * 3); // 4 players * betAmount * 0.75
+  } else {
+    totalPot = Math.round(this.betAmount * 1.5); // 2 players * betAmount * 0.75
   }
 
-  // Add winner payout to winner's account
-  await winner.updateBalance(totalPot);
-  
-  // Update winner's stats (track earnings as bet amount)
-  await winner.addWin(this.betAmount);
-  
-  // Update loser's stats
-  await loser.addLoss();
+  // Find all users
+  const User = require('./User');
+  const winners = await User.find({ _id: { $in: winnerIdArray } });
+  const losers = await User.find({ _id: { $in: loserIdArray } });
+
+  if (winners.length !== winnerIdArray.length || losers.length !== loserIdArray.length) {
+    throw new Error('Some users not found');
+  }
+
+  // Distribute winnings among winners
+  const winningsPerWinner = Math.round(totalPot / winners.length);
+  for (const winner of winners) {
+    await winner.updateBalance(winningsPerWinner);
+    await winner.addWin(this.betAmount);
+  }
+
+  // Update losers' stats
+  for (const loser of losers) {
+    await loser.addLoss();
+  }
+
+  // For backward compatibility, keep winner/loser fields for 2-player challenges
+  if (this.playerCount === 2) {
+    this.winner = winnerIdArray[0];
+    this.loser = loserIdArray[0];
+    this.winnerScreenshot = winnerScreenshot;
+    
+    // Ensure challenger and accepter are set for 2-player challenges
+    if (!this.challenger && this.participants.length > 0) {
+      this.challenger = this.participants[0].user;
+    }
+    if (!this.accepter && this.participants.length > 1) {
+      this.accepter = this.participants[1].user;
+    }
+  }
 
   // Save the challenge
   await this.save();
@@ -176,8 +292,9 @@ challengeSchema.methods.completeMatch = async function(winnerId, loserId, winner
   return {
     challenge: this,
     totalPot,
-    winnerBalance: winner.balance,
-    loserBalance: loser.balance
+    winningsPerWinner,
+    winnerCount: winners.length,
+    loserCount: losers.length
   };
 };
 

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FaGamepad, FaSearch, FaEye, FaPlay, FaTrophy, FaTimes, FaClock, FaUser, FaCoins, FaFilter, FaEdit, FaInfoCircle } from 'react-icons/fa';
+import { FaGamepad, FaSearch, FaEye, FaPlay, FaTrophy, FaTimes, FaClock, FaUser, FaCoins, FaFilter, FaEdit, FaInfoCircle, FaPlus } from 'react-icons/fa';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { adminAPI } from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
+import CreateChallengeModal from '../../components/challenges/CreateChallengeModal';
 
 const AdminChallenges = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -15,6 +16,7 @@ const AdminChallenges = () => {
   const [showStartMatchModal, setShowStartMatchModal] = useState(false);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
   const [showRoomCodeModal, setShowRoomCodeModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [roomCode, setRoomCode] = useState('');
   const [winnerId, setWinnerId] = useState('');
   const [disputeNotes, setDisputeNotes] = useState('');
@@ -55,7 +57,7 @@ const AdminChallenges = () => {
         queryClient.invalidateQueries(['admin-challenges']);
         toast.success('Dispute resolved successfully');
         setShowDisputeModal(false);
-        setWinnerId('');
+        setWinnerId(selectedChallenge?.playerCount === 4 ? [] : '');
         setDisputeNotes('');
       },
       onError: (error) => {
@@ -94,9 +96,39 @@ const AdminChallenges = () => {
     }
   );
 
+  const createChallengeMutation = useMutation(
+    (data) => adminAPI.createChallenge(data),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['admin-challenges']);
+        toast.success('Challenge created successfully');
+        setShowCreateModal(false);
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || 'Error creating challenge');
+      }
+    }
+  );
+
   const handleSearch = (e) => {
     e.preventDefault();
     setCurrentPage(1);
+  };
+
+  const handleCreateChallenge = async (game, betAmount, scheduledDateTime, matchDuration, playerCount) => {
+    try {
+      const challengeData = {
+        game,
+        betAmount,
+        scheduledMatchTime: scheduledDateTime,
+        matchDuration,
+        playerCount
+      };
+      
+      await createChallengeMutation.mutateAsync(challengeData);
+    } catch (error) {
+      console.error('Error creating challenge:', error);
+    }
   };
 
   const handleStartMatch = () => {
@@ -150,6 +182,13 @@ const AdminChallenges = () => {
     setRoomCodeAction(action);
     setRoomCode(challenge.adminRoomCode || '');
     setShowRoomCodeModal(true);
+  };
+
+  const openDisputeModal = (challenge) => {
+    setSelectedChallenge(challenge);
+    setWinnerId(challenge.playerCount === 4 ? [] : '');
+    setDisputeNotes('');
+    setShowDisputeModal(true);
   };
 
   const getStatusColor = (status) => {
@@ -215,9 +254,18 @@ const AdminChallenges = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white">Challenge Management</h1>
-          <p className="text-dark-300">Monitor and manage all gaming challenges and matches</p>
+          <p className="text-dark-300">Create and manage all gaming challenges and matches</p>
         </div>
         <div className="flex items-center gap-4">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowCreateModal(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <FaPlus />
+            Create Challenge
+          </motion.button>
           <div className="text-right">
             <div className="text-2xl font-bold text-white">{pagination.total || 0}</div>
             <div className="text-sm text-dark-300">Total Challenges</div>
@@ -336,18 +384,46 @@ const AdminChallenges = () => {
                   <td className="p-3">
                     <div className="space-y-1">
                       <div className="text-sm">
-                        <span className="text-dark-300">Challenger:</span>
-                        <span className="text-white ml-2">{challenge.challenger?.username}</span>
+                        <span className="text-dark-300">Type:</span>
+                        <span className="text-white ml-2">{challenge.playerCount || 2}-Player</span>
                       </div>
-                      {challenge.accepter && (
-                        <div className="text-sm">
-                          <span className="text-dark-300">Accepter:</span>
-                          <span className="text-white ml-2">{challenge.accepter?.username}</span>
-                        </div>
+                      <div className="text-sm">
+                        <span className="text-dark-300">Challenger:</span>
+                        <span className="text-white ml-2">
+                          {challenge.challenger ? challenge.challenger.username : 'Waiting...'}
+                        </span>
+                      </div>
+                      {challenge.playerCount === 2 ? (
+                        <>
+                          {challenge.accepter && (
+                            <div className="text-sm">
+                              <span className="text-dark-300">Accepter:</span>
+                              <span className="text-white ml-2">{challenge.accepter.username}</span>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-sm">
+                            <span className="text-dark-300">Participants:</span>
+                            <span className="text-white ml-2">
+                              {challenge.participants?.length || 0}/{challenge.maxParticipants || 4}
+                            </span>
+                          </div>
+                          {challenge.participants && challenge.participants.length > 0 && (
+                            <div className="text-xs text-dark-400">
+                              {challenge.participants.map((p, i) => (
+                                <span key={p.user._id || i} className="block">
+                                  {p.user.username || 'Unknown'}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </>
                       )}
                       {challenge.winner && (
                         <div className="text-sm">
-                          <span className="text-green-400 font-medium">Winner: {challenge.winner?.username}</span>
+                          <span className="text-green-400 font-medium">Winner: {challenge.winner.username}</span>
                         </div>
                       )}
                     </div>
@@ -381,16 +457,34 @@ const AdminChallenges = () => {
                               setSelectedChallenge(challenge);
                               setShowStartMatchModal(true);
                             }}
-                            className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 rounded"
-                            title="Start Match"
+                            disabled={!challenge.participants || challenge.participants.length === 0}
+                            className={`p-2 rounded ${
+                              challenge.participants && challenge.participants.length > 0
+                                ? 'text-blue-400 hover:text-blue-300 hover:bg-blue-400/10'
+                                : 'text-gray-400 cursor-not-allowed'
+                            }`}
+                            title={
+                              challenge.participants && challenge.participants.length > 0
+                                ? 'Start Match'
+                                : 'No participants to start match'
+                            }
                           >
                             <FaPlay />
                           </button>
                           {!challenge.adminRoomCode ? (
                             <button
                               onClick={() => openRoomCodeModal(challenge, 'provide')}
-                              className="p-2 text-green-400 hover:text-green-300 hover:bg-green-400/10 rounded"
-                              title="Provide Room Code"
+                              disabled={!challenge.participants || challenge.participants.length === 0}
+                              className={`p-2 rounded ${
+                                challenge.participants && challenge.participants.length > 0
+                                  ? 'text-green-400 hover:text-green-300 hover:bg-green-400/10'
+                                  : 'text-gray-400 cursor-not-allowed'
+                              }`}
+                              title={
+                                challenge.participants && challenge.participants.length > 0
+                                  ? 'Provide Room Code'
+                                  : 'No participants to provide room code'
+                              }
                             >
                               <FaEye />
                             </button>
@@ -407,10 +501,7 @@ const AdminChallenges = () => {
                       )}
                       {challenge.status === 'in-progress' && (
                         <button
-                          onClick={() => {
-                            setSelectedChallenge(challenge);
-                            setShowDisputeModal(true);
-                          }}
+                          onClick={() => openDisputeModal(challenge)}
                           className="p-2 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 rounded"
                           title="Resolve Dispute"
                         >
@@ -476,9 +567,30 @@ const AdminChallenges = () => {
             <div className="p-6 space-y-4">
               <h3 className="text-xl font-bold text-white">Start Match</h3>
               <p className="text-dark-300">
-                Starting match between <span className="text-white">{selectedChallenge.challenger?.username}</span> and <span className="text-white">{selectedChallenge.accepter?.username}</span>
+                Starting {selectedChallenge.playerCount || 2}-player match for {selectedChallenge.game}
               </p>
               
+              {selectedChallenge.participants && selectedChallenge.participants.length > 0 && (
+                <div className="p-3 bg-dark-700 rounded-lg">
+                  <p className="text-sm text-dark-300 mb-2">Participants:</p>
+                  <div className="space-y-1">
+                    {selectedChallenge.participants.map((participant, index) => (
+                      <div key={participant.user._id || index} className="text-xs text-white">
+                        {index + 1}. {participant.user.username || 'Unknown'}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {(!selectedChallenge.participants || selectedChallenge.participants.length === 0) && (
+                <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg">
+                  <p className="text-sm text-red-400">
+                    ❌ No participants have joined this challenge yet. Cannot start match.
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-white">Room Code</label>
                 <input
@@ -500,7 +612,11 @@ const AdminChallenges = () => {
                 </button>
                 <button
                   onClick={handleStartMatch}
-                  disabled={!roomCode.trim() || startMatchMutation.isLoading}
+                  disabled={
+                    !roomCode.trim() || 
+                    startMatchMutation.isLoading ||
+                    (!selectedChallenge.participants || selectedChallenge.participants.length === 0)
+                  }
                   className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {startMatchMutation.isLoading ? 'Starting...' : 'Start Match'}
@@ -523,24 +639,62 @@ const AdminChallenges = () => {
             <div className="p-6 space-y-4">
               <h3 className="text-xl font-bold text-white">Resolve Dispute</h3>
               <p className="text-dark-300">
-                Resolving dispute for {selectedChallenge.game} match
+                Resolving dispute for {selectedChallenge.game} match ({selectedChallenge.playerCount || 2}-player)
               </p>
               
               <div className="space-y-3">
-                <label className="block text-sm font-medium text-white">Select Winner</label>
-                <select
-                  value={winnerId}
-                  onChange={(e) => setWinnerId(e.target.value)}
-                  className="input-field w-full"
-                >
-                  <option value="">Choose winner...</option>
-                  <option value={selectedChallenge.challenger?._id}>
-                    {selectedChallenge.challenger?.username} (Challenger)
-                  </option>
-                  <option value={selectedChallenge.accepter?._id}>
-                    {selectedChallenge.accepter?.username} (Accepter)
-                  </option>
-                </select>
+                <label className="block text-sm font-medium text-white">
+                  {selectedChallenge.playerCount === 4 ? 'Select Winners (Multiple)' : 'Select Winner'}
+                </label>
+                {selectedChallenge.playerCount === 4 ? (
+                  <div className="space-y-2">
+                    <p className="text-xs text-dark-300">
+                      Select all players who should be declared winners:
+                    </p>
+                    {selectedChallenge.participants?.map((participant) => (
+                      <label key={participant.user._id} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={Array.isArray(winnerId) ? winnerId.includes(participant.user._id) : false}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setWinnerId(prev => Array.isArray(prev) ? [...prev, participant.user._id] : [participant.user._id]);
+                            } else {
+                              setWinnerId(prev => Array.isArray(prev) ? prev.filter(id => id !== participant.user._id) : []);
+                            }
+                          }}
+                          className="rounded border-dark-600 bg-dark-700 text-primary-500 focus:ring-primary-500"
+                        />
+                        <span className="text-white">{participant.user.username}</span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <select
+                    value={winnerId}
+                    onChange={(e) => setWinnerId(e.target.value)}
+                    className="input-field w-full"
+                  >
+                    <option value="">Choose winner...</option>
+                    {selectedChallenge.challenger && (
+                      <option value={selectedChallenge.challenger._id}>
+                        {selectedChallenge.challenger.username} (Challenger)
+                      </option>
+                    )}
+                    {selectedChallenge.accepter && (
+                      <option value={selectedChallenge.accepter._id}>
+                        {selectedChallenge.accepter.username} (Accepter)
+                      </option>
+                    )}
+                    {selectedChallenge.participants && selectedChallenge.participants.length > 0 && (
+                      selectedChallenge.participants.map((participant) => (
+                        <option key={participant.user._id} value={participant.user._id}>
+                          {participant.user.username} (Participant)
+                        </option>
+                      ))
+                    )}
+                  </select>
+                )}
               </div>
 
               <div className="space-y-3">
@@ -563,7 +717,11 @@ const AdminChallenges = () => {
                 </button>
                 <button
                   onClick={() => handleResolveDispute(selectedChallenge._id, winnerId, disputeNotes)}
-                  disabled={!winnerId || resolveDisputeMutation.isLoading}
+                  disabled={
+                    !winnerId || 
+                    (selectedChallenge.playerCount === 4 && (!Array.isArray(winnerId) || winnerId.length === 0)) ||
+                    resolveDisputeMutation.isLoading
+                  }
                   className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {resolveDisputeMutation.isLoading ? 'Resolving...' : 'Resolve Dispute'}
@@ -589,10 +747,31 @@ const AdminChallenges = () => {
               </h3>
               <p className="text-dark-300">
                 {roomCodeAction === 'provide' 
-                  ? `Providing room code for ${selectedChallenge.game} match between ${selectedChallenge.challenger?.username} and ${selectedChallenge.accepter?.username}`
+                  ? `Providing room code for ${selectedChallenge.game} match (${selectedChallenge.playerCount || 2}-player)`
                   : `Updating room code for ${selectedChallenge.game} match`}
               </p>
               
+              {selectedChallenge.participants && selectedChallenge.participants.length > 0 && (
+                <div className="p-3 bg-dark-700 rounded-lg">
+                  <p className="text-sm text-dark-300 mb-2">Participants:</p>
+                  <div className="space-y-1">
+                    {selectedChallenge.participants.map((participant, index) => (
+                      <div key={participant.user._id || index} className="text-xs text-white">
+                        {index + 1}. {participant.user.username || 'Unknown'}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {(!selectedChallenge.participants || selectedChallenge.participants.length === 0) && (
+                <div className="p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
+                  <p className="text-sm text-yellow-400">
+                    ⚠️ No players have joined this challenge yet. Room code can only be provided after players join.
+                  </p>
+                </div>
+              )}
+
               <div className="space-y-3">
                 <label className="block text-sm font-medium text-white">Room Code</label>
                 <input
@@ -617,7 +796,11 @@ const AdminChallenges = () => {
                 </button>
                 <button
                   onClick={handleRoomCodeAction}
-                  disabled={!roomCode.trim() || (provideRoomCodeMutation.isLoading || updateRoomCodeMutation.isLoading)}
+                  disabled={
+                    !roomCode.trim() || 
+                    (provideRoomCodeMutation.isLoading || updateRoomCodeMutation.isLoading) ||
+                    (!selectedChallenge.participants || selectedChallenge.participants.length === 0)
+                  }
                   className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {provideRoomCodeMutation.isLoading || updateRoomCodeMutation.isLoading 
@@ -650,6 +833,8 @@ const AdminChallenges = () => {
                 <div className="space-y-2">
                   <div className="text-sm text-dark-300">Game</div>
                   <div className="text-white font-medium">{selectedChallenge.game}</div>
+                  <div className="text-sm text-dark-300 mt-2">Player Count</div>
+                  <div className="text-white font-medium">{selectedChallenge.playerCount || 2} Players</div>
                   <div className="text-sm text-dark-300 mt-2">Status</div>
                   <div className="text-white font-medium">{selectedChallenge.status}</div>
                   <div className="text-sm text-dark-300 mt-2">Scheduled</div>
@@ -657,13 +842,35 @@ const AdminChallenges = () => {
                 </div>
                 <div className="space-y-2">
                   <div className="text-sm text-dark-300">Challenger</div>
-                  <div className="text-white font-medium">{selectedChallenge.challenger?.username}</div>
-                  <div className="text-sm text-dark-300 mt-2">Accepter</div>
-                  <div className="text-white font-medium">{selectedChallenge.accepter?.username || '—'}</div>
+                  <div className="text-white font-medium">
+                    {selectedChallenge.challenger ? selectedChallenge.challenger.username : 'Waiting for challenger...'}
+                  </div>
+                  {selectedChallenge.playerCount === 2 ? (
+                    <>
+                      <div className="text-sm text-dark-300 mt-2">Accepter</div>
+                      <div className="text-white font-medium">{selectedChallenge.accepter?.username || '—'}</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-sm text-dark-300 mt-2">Participants</div>
+                      <div className="text-white font-medium">
+                        {selectedChallenge.participants?.length || 0}/{selectedChallenge.maxParticipants || 4}
+                      </div>
+                      {selectedChallenge.participants && (
+                        <div className="text-xs text-dark-300 mt-1">
+                          {selectedChallenge.participants.map((p, i) => (
+                            <span key={p.user._id || i} className="block">
+                              {i + 1}. {p.user.username || 'Unknown'}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
                   {selectedChallenge.winner && (
                     <>
                       <div className="text-sm text-dark-300 mt-2">Winner</div>
-                      <div className="text-white font-medium">{selectedChallenge.winner?.username}</div>
+                      <div className="text-white font-medium">{selectedChallenge.winner.username}</div>
                     </>
                   )}
                 </div>
@@ -683,6 +890,15 @@ const AdminChallenges = () => {
             </div>
           </motion.div>
         </div>
+      )}
+
+      {/* Create Challenge Modal */}
+      {showCreateModal && (
+        <CreateChallengeModal
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={handleCreateChallenge}
+          isAdmin={true}
+        />
       )}
     </div>
   );

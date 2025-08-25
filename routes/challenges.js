@@ -184,11 +184,27 @@ router.post('/:challengeId/accept', auth, async (req, res) => {
       return res.status(400).json({ message: 'Challenge is no longer available' });
     }
 
-    if (challenge.challenger.toString() === req.user.userId) {
+    // Check if user is already a participant
+    const isAlreadyParticipant = challenge.participants?.some(p => p.user.toString() === req.user.userId);
+    if (isAlreadyParticipant) {
+      return res.status(400).json({ message: 'You are already a participant in this challenge' });
+    }
+
+    // Check if challenge is full
+    if (challenge.participants && challenge.participants.length >= challenge.maxParticipants) {
+      return res.status(400).json({ message: 'Challenge is already full' });
+    }
+
+    // Check if user is trying to accept their own challenge (only if challenger exists)
+    if (challenge.challenger && challenge.challenger.toString() === req.user.userId) {
       return res.status(400).json({ message: 'Cannot accept your own challenge' });
     }
 
     const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
     const totalCost = challenge.betAmount;
     
     if (user.balance < totalCost) {
@@ -200,17 +216,18 @@ router.post('/:challengeId/accept', auth, async (req, res) => {
     // Deduct challenge amount from accepter's balance
     await user.updateBalance(-totalCost);
 
-    // Accept the challenge
+    // Accept the challenge using the new participant system
     await challenge.acceptChallenge(req.user.userId);
 
     const populatedChallenge = await Challenge.findById(challenge._id)
       .populate('challenger', 'username profilePicture')
-      .populate('accepter', 'username profilePicture');
+      .populate('accepter', 'username profilePicture')
+      .populate('participants.user', 'username profilePicture');
 
     res.json(populatedChallenge);
   } catch (error) {
     console.error('Accept challenge error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error: ' + error.message });
   }
 });
 

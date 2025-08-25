@@ -14,7 +14,7 @@ import {
 } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 
-const Sidebar = ({ isCollapsed, onToggle }) => {
+const Sidebar = ({ isCollapsed, onToggle, onClose }) => {
   const { user } = useAuth();
 
   const navigationItems = [
@@ -29,23 +29,39 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
   const adminItems = [
     { to: '/admin/dashboard', icon: FaCog, label: 'Admin Dashboard', color: 'text-indigo-400' },
     { to: '/admin/users', icon: FaUser, label: 'Manage Users', color: 'text-pink-400' },
-    { to: '/admin/challenges', icon: FaTrophy, label: 'Manage Challenges', color: 'text-yellow-400' },
+    { to: '/admin/challenges', icon: FaTrophy, label: 'Create Challenges', color: 'text-yellow-400' },
     { to: '/admin/payments', icon: FaCreditCard, label: 'Manage Payments', color: 'text-orange-400' },
     { to: '/admin/helpline', icon: FaHeadset, label: 'Manage Helpline', color: 'text-red-400' }
   ];
 
   return (
     <>
+      {/* Mobile Overlay */}
+      {!isCollapsed && (
+        <motion.div
+          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose || onToggle}
+        />
+      )}
+      
       {/* Toggle Button */}
       <motion.button
         onClick={onToggle}
-        className={`fixed top-4 left-4 z-50 p-2 rounded-full bg-dark-800 border border-dark-600 text-white hover:bg-dark-700 transition-colors duration-200 ${
+        className={`fixed top-4 z-50 p-2 rounded-full bg-dark-800 border border-dark-600 text-white hover:bg-dark-700 transition-colors duration-200 ${
           isCollapsed ? 'left-4' : 'left-64'
-        }`}
+        } md:left-4`}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         initial={false}
-        animate={{ left: isCollapsed ? '1rem' : '16rem' }}
+        animate={{ 
+          left: isCollapsed ? '1rem' : '16rem',
+          '@media (max-width: 768px)': {
+            left: isCollapsed ? '1rem' : '1rem'
+          }
+        }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
       >
         {isCollapsed ? <FaChevronRight size={16} /> : <FaChevronLeft size={16} />}
@@ -55,9 +71,15 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
       <motion.div
         className={`fixed left-0 top-0 h-full bg-dark-800 border-r border-dark-600 z-40 ${
           isCollapsed ? 'w-16' : 'w-64'
-        }`}
+        } md:w-64`}
         initial={false}
-        animate={{ width: isCollapsed ? '4rem' : '16rem' }}
+        animate={{ 
+          width: isCollapsed ? '4rem' : '16rem',
+          '@media (max-width: 768px)': {
+            width: isCollapsed ? '0' : '100%',
+            transform: isCollapsed ? 'translateX(-100%)' : 'translateX(0)'
+          }
+        }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
       >
         <div className="flex flex-col h-full">
@@ -115,7 +137,7 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
                   </div>
                   <div className="bg-dark-700 rounded-lg p-3">
                     <p className="text-dark-300 text-xs">Balance</p>
-                    <p className="text-yellow-400 font-bold text-lg">৳{user?.balance?.toLocaleString() || '0'}</p>
+                    <p className="text-yellow-400 font-bold text-lg sidebar-balance">৳{user?.balance?.toLocaleString() || '0'}</p>
                   </div>
                 </motion.div>
               ) : (
@@ -132,7 +154,7 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
                     </div>
                   </div>
                   <div className="bg-dark-700 rounded-lg p-2 text-center">
-                    <p className="text-yellow-400 font-bold text-sm">৳{user?.balance?.toLocaleString() || '0'}</p>
+                    <p className="text-yellow-400 font-bold text-xs truncate sidebar-balance">৳{user?.balance?.toLocaleString() || '0'}</p>
                   </div>
                 </motion.div>
               )}

@@ -5,7 +5,7 @@ import { challengesAPI } from '../../services/api';
 import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 
-const ChallengeCard = ({ challenge, currentUser, onAccept, onExtend, onCancel }) => {
+const ChallengeCard = ({ challenge, currentUser, onAccept, onExtend, onCancel, showParticipantCount = false }) => {
   const [timeRemaining, setTimeRemaining] = useState('');
   const [showExtendModal, setShowExtendModal] = useState(false);
   const [extendHours, setExtendHours] = useState(24);
@@ -14,12 +14,14 @@ const ChallengeCard = ({ challenge, currentUser, onAccept, onExtend, onCancel })
   const [proofFile, setProofFile] = useState(null);
   const [submittingProof, setSubmittingProof] = useState(false);
 
-  const isChallenger = challenge.challenger._id === currentUser?.id;
+  const isChallenger = challenge.challenger && challenge.challenger._id === currentUser?.id;
   const isAccepter = challenge.accepter && challenge.accepter._id === currentUser?.id;
-  const canAccept = !isChallenger && challenge.status === 'pending' && !isExpired;
+  const isParticipant = challenge.participants?.some(p => p.user._id === currentUser?.id) || isChallenger || isAccepter;
+  const canAccept = !isChallenger && !isAccepter && challenge.status === 'pending' && !isExpired && 
+    (!challenge.participants || challenge.participants.length < (challenge.maxParticipants || 2));
   const canExtend = isChallenger && challenge.status === 'pending';
   const canCancel = isChallenger && challenge.status === 'pending';
-  const canSeeRoomCode = (isChallenger || isAccepter) && challenge.status === 'in-progress' && challenge.adminRoomCode;
+  const canSeeRoomCode = isParticipant && challenge.status === 'in-progress' && challenge.adminRoomCode;
 
   useEffect(() => {
     const updateTimeRemaining = () => {
@@ -139,12 +141,64 @@ const ChallengeCard = ({ challenge, currentUser, onAccept, onExtend, onCancel })
             <FaUser className="text-white" />
           </div>
           <div className="flex-1">
-            <p className="font-medium text-white">{challenge.challenger.username}</p>
-            <p className="text-sm text-dark-300">
-              Wins: {challenge.challenger.totalWins} | Losses: {challenge.challenger.totalLosses}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-white">
+                {challenge.challenger ? challenge.challenger.username : 'Waiting for challenger...'}
+              </p>
+              {challenge.isAdminCreated && (
+                <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-full">
+                  Admin Created
+                </span>
+              )}
+            </div>
+            {challenge.challenger ? (
+              <p className="text-sm text-dark-300">
+                Wins: {challenge.challenger.totalWins} | Losses: {challenge.challenger.totalLosses}
+              </p>
+            ) : (
+              <p className="text-sm text-dark-300">
+                Be the first to join this challenge!
+              </p>
+            )}
           </div>
         </div>
+
+        {/* Participant Count */}
+        {showParticipantCount && (
+          <div className="flex items-center gap-2 p-3 bg-dark-700 rounded-lg">
+            <FaUser className="text-blue-400" size={20} />
+            <div className="flex-1">
+              <p className="text-sm text-dark-300">Participants</p>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-blue-400">
+                  {challenge.participants?.length || (challenge.accepter ? 2 : 1)}/{challenge.maxParticipants || 2}
+                </span>
+                <span className="text-xs text-dark-400">
+                  {challenge.participants?.length >= (challenge.maxParticipants || 2) ? 'Full' : 'Open'}
+                </span>
+                {challenge.participants?.length >= (challenge.maxParticipants || 2) && (
+                  <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">
+                    Booked
+                  </span>
+                )}
+                {challenge.playerCount === 4 && (
+                  <span className="px-2 py-1 bg-purple-500/20 text-purple-400 text-xs rounded-full">
+                    4-Player
+                  </span>
+                )}
+              </div>
+              {challenge.participants && challenge.participants.length > 0 && (
+                <div className="mt-2 text-xs text-dark-400">
+                  {challenge.participants.map((participant, index) => (
+                    <span key={participant.user._id || index} className="inline-block mr-2">
+                      {participant.user.username || 'Unknown'}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
           {/* Time Remaining */}
           <div className="flex items-center gap-2 p-3 bg-dark-700 rounded-lg">
@@ -177,7 +231,10 @@ const ChallengeCard = ({ challenge, currentUser, onAccept, onExtend, onCancel })
            <div className="flex-1">
              <p className="text-sm text-dark-300">Winning Prize</p>
              <p className="font-medium text-green-400">
-               ৳{Math.round(challenge.betAmount * 1.5)}
+               ৳{challenge.playerCount === 4 ? Math.round(challenge.betAmount * 3) : Math.round(challenge.betAmount * 1.5)}
+             </p>
+             <p className="text-xs text-dark-400">
+               {challenge.playerCount === 4 ? '4 players × ৳' + challenge.betAmount : '2 players × ৳' + challenge.betAmount}
              </p>
            </div>
          </div>

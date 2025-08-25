@@ -516,6 +516,65 @@ router.get('/payments/stats/overview', adminAuth, async (req, res) => {
   }
 });
 
+// Create new challenge (admin only)
+router.post('/challenges', async (req, res) => {
+  try {
+    const { game, betAmount, scheduledMatchTime, matchDuration, playerCount } = req.body;
+
+    if (!game || !betAmount || !scheduledMatchTime || !matchDuration || !playerCount) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    // Validate player count
+    if (![2, 4].includes(playerCount)) {
+      return res.status(400).json({ message: 'Player count must be either 2 or 4' });
+    }
+
+    // Validate game restrictions for 4-player challenges
+    if (playerCount === 4 && !['PUBG', 'Free Fire'].includes(game)) {
+      return res.status(400).json({ message: '4-player challenges are only available for PUBG and Free Fire games' });
+    }
+
+    // Validate bet amount
+    if (betAmount < 10 || betAmount > 10000) {
+      return res.status(400).json({ message: 'Bet amount must be between ৳10 and ৳10,000' });
+    }
+
+    // Validate scheduled time (must be in the future)
+    const scheduledTime = new Date(scheduledMatchTime);
+    const now = new Date();
+    if (scheduledTime <= now) {
+      return res.status(400).json({ message: 'Scheduled time must be in the future' });
+    }
+
+    // Create challenge with admin as creator (not participant)
+    const challenge = new Challenge({
+      game,
+      betAmount,
+      scheduledMatchTime: scheduledTime,
+      matchDuration,
+      playerCount,
+      maxParticipants: playerCount,
+      challengeType: playerCount === 2 ? '2-player' : '4-player',
+      challenger: null, // No challenger initially - players will join
+      status: 'pending',
+      expiresAt: new Date(scheduledTime.getTime() - 30 * 60 * 1000), // Expire 30 minutes before match
+      isAdminCreated: true,
+      participants: [] // Start with empty participants array
+    });
+
+    await challenge.save();
+
+    res.status(201).json({ 
+      message: 'Challenge created successfully', 
+      challenge 
+    });
+  } catch (error) {
+    console.error('Create challenge error:', error);
+    res.status(500).json({ message: 'Error creating challenge' });
+  }
+});
+
 // Get challenges with pagination and filtering
 router.get('/challenges', async (req, res) => {
   try {
@@ -530,6 +589,7 @@ router.get('/challenges', async (req, res) => {
     const challenges = await Challenge.find(query)
       .populate('challenger', 'username')
       .populate('accepter', 'username')
+      .populate('participants.user', 'username')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -570,18 +630,26 @@ router.post('/challenges/:challengeId/start-match', async (req, res) => {
       return res.status(400).json({ message: 'Challenge must be accepted to start match' });
     }
 
-    challenge.status = 'in-progress';
-    challenge.roomCode = roomCode;
+    // Check if challenge has participants
+    if (!challenge.participants || challenge.participants.length === 0) {
+      return res.status(400).json({ 
+        message: 'Challenge needs at least one participant to start match' 
+      });
+    }
+
+    // Use the updated startMatch method that checks participant count
+    await challenge.startMatch(roomCode);
+    
+    // Set admin-specific fields
     challenge.adminRoomCode = roomCode;
     challenge.roomCodeProvidedAt = new Date();
     challenge.roomCodeProvidedBy = req.user.userId;
-    challenge.matchTime = new Date();
     await challenge.save();
 
     res.json({ message: 'Match started successfully', challenge });
   } catch (error) {
     console.error('Start match error:', error);
-    res.status(500).json({ message: 'Error starting match' });
+    res.status(500).json({ message: error.message || 'Error starting match' });
   }
 });
 
@@ -600,8 +668,22 @@ router.post('/challenges/:challengeId/provide-room-code', async (req, res) => {
       return res.status(404).json({ message: 'Challenge not found' });
     }
 
-    if (challenge.status !== 'accepted') {
+    if (challenge.status !== 'pending') {
       return res.status(400).json({ message: 'Challenge must be accepted to provide room code' });
+    }
+
+    // Check if challenge has participants
+    if (!challenge.participants || challenge.participants.length === 0) {
+      return res.status(400).json({ 
+        message: 'Challenge needs at least one participant to provide room code' 
+      });
+    }
+
+    // Check if challenge has enough participants
+    if (challenge.participants.length < challenge.maxParticipants) {
+      return res.status(400).json({ 
+        message: `Challenge needs ${challenge.maxParticipants} participants to start. Current: ${challenge.participants.length}` 
+      });
     }
 
     challenge.adminRoomCode = roomCode;
@@ -662,19 +744,36 @@ router.post('/challenges/:challengeId/resolve-dispute', adminAuth, async (req, r
       return res.status(400).json({ message: 'Challenge must be in progress to resolve' });
     }
 
-    // Determine loser ID safely (winnerId may be a string)
-    const winnerIdStr = String(winnerId);
-    const challengerIdStr = String(challenge.challenger);
-    const accepterIdStr = String(challenge.accepter);
+    // Handle both 2-player and 4-player challenges
+    let result;
+    if (challenge.playerCount === 4) {
+      // For 4-player challenges, winnerId should be an array
+      if (!Array.isArray(winnerId)) {
+        return res.status(400).json({ message: 'For 4-player challenges, winnerId must be an array' });
+      }
+      
+      // Get all participant IDs
+      const participantIds = challenge.participants.map(p => p.user.toString());
+      const loserIds = participantIds.filter(id => !winnerId.includes(id));
+      
+      if (winnerId.length === 0 || loserIds.length === 0) {
+        return res.status(400).json({ message: 'Invalid winner/loser configuration' });
+      }
+      
+      result = await challenge.completeMatch(winnerId, loserIds, 'Admin resolved');
+    } else {
+      // For 2-player challenges, maintain backward compatibility
+      const winnerIdStr = String(winnerId);
+      const challengerIdStr = String(challenge.challenger);
+      const accepterIdStr = String(challenge.accepter);
 
-    if (!accepterIdStr) {
-      return res.status(400).json({ message: 'Challenge does not have an accepter yet' });
+      if (!accepterIdStr) {
+        return res.status(400).json({ message: 'Challenge does not have an accepter yet' });
+      }
+
+      const loserId = winnerIdStr === challengerIdStr ? challenge.accepter : challenge.challenger;
+      result = await challenge.completeMatch(winnerId, loserId, 'Admin resolved');
     }
-
-    const loserId = winnerIdStr === challengerIdStr ? challenge.accepter : challenge.challenger;
-
-    // Complete the match with automatic payout
-    const result = await challenge.completeMatch(winnerId, loserId, 'Admin resolved');
 
     // Add admin notes if provided
     if (adminNotes) {
@@ -686,15 +785,27 @@ router.post('/challenges/:challengeId/resolve-dispute', adminAuth, async (req, r
     try {
       const io = req.app.get('io');
       if (io) {
-        io.to(challenge.challenger.toString()).emit('match-update', {
-          type: 'completed',
-          challenge: result.challenge
+        // Emit to all participants
+        challenge.participants?.forEach(participant => {
+          io.to(participant.user.toString()).emit('match-update', {
+            type: 'completed',
+            challenge: result.challenge
+          });
         });
         
-        io.to(challenge.accepter.toString()).emit('match-update', {
-          type: 'completed',
-          challenge: result.challenge
-        });
+        // Also emit to challenger and accepter for backward compatibility
+        if (challenge.challenger) {
+          io.to(challenge.challenger.toString()).emit('match-update', {
+            type: 'completed',
+            challenge: result.challenge
+          });
+        }
+        if (challenge.accepter) {
+          io.to(challenge.accepter.toString()).emit('match-update', {
+            type: 'completed',
+            challenge: result.challenge
+          });
+        }
       }
     } catch (socketError) {
       console.log('Socket notification failed:', socketError);
@@ -704,8 +815,9 @@ router.post('/challenges/:challengeId/resolve-dispute', adminAuth, async (req, r
       message: 'Dispute resolved successfully',
       challenge: result.challenge,
       totalPot: result.totalPot,
-      winnerBalance: result.winnerBalance,
-      loserBalance: result.loserBalance
+      winningsPerWinner: result.winningsPerWinner,
+      winnerCount: result.winnerCount,
+      loserCount: result.loserCount
     });
   } catch (error) {
     console.error('Resolve dispute error:', error);

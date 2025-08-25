@@ -13,6 +13,12 @@
   }
 }
 
+*{
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 @layer components {
   .btn-primary {
     @apply bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105;
@@ -52,6 +58,132 @@
   
   .sidebar-closed {
     @apply -translate-x-full;
+  }
+  
+  /* Mobile sidebar behavior */
+  @media (max-width: 768px) {
+    .sidebar {
+      @apply w-full;
+    }
+    
+    .sidebar-collapsed {
+      @apply -translate-x-full;
+    }
+    
+    /* Mobile dashboard adjustments */
+    .dashboard-mobile {
+      @apply px-2;
+    }
+    
+    /* Mobile card adjustments */
+    .gaming-card {
+      @apply p-4;
+    }
+    
+    /* Mobile text adjustments */
+    .mobile-text-sm {
+      @apply text-sm;
+    }
+    
+    .mobile-text-xs {
+      @apply text-xs;
+    }
+  }
+  
+  /* Ensure proper mobile scaling */
+  @media (max-width: 480px) {
+    .gaming-card {
+      @apply p-3;
+    }
+    
+    .dashboard-mobile {
+      @apply px-1;
+    }
+    
+    .mobile-card {
+      @apply p-2;
+    }
+  }
+  
+  /* Mobile card specific styles */
+  .mobile-card {
+    @apply min-h-[80px];
+  }
+  
+  @media (max-width: 768px) {
+    .mobile-card {
+      @apply min-h-[100px];
+    }
+    
+    /* Ensure balance text doesn't overflow on mobile */
+    .balance-text {
+      @apply text-xs;
+      word-break: break-word;
+      overflow-wrap: break-word;
+    }
+    
+    /* Mobile sidebar balance display */
+    .sidebar-balance {
+      @apply text-xs;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+  
+  /* Extra small screens */
+  @media (max-width: 480px) {
+    .balance-text {
+      @apply text-xs;
+    }
+    
+    .sidebar-balance {
+      @apply text-xs;
+    }
+    
+    /* Mobile container adjustments */
+    .mobile-container {
+      @apply px-1;
+    }
+    
+    /* Mobile grid adjustments */
+    .mobile-grid {
+      @apply grid-cols-1;
+    }
+  }
+  
+  /* Mobile-first responsive design */
+  @media (max-width: 640px) {
+    .mobile-grid {
+      @apply grid-cols-1;
+    }
+    
+    .mobile-text {
+      @apply text-sm;
+    }
+  }
+  
+  @media (min-width: 641px) and (max-width: 768px) {
+    .mobile-grid {
+      @apply grid-cols-2;
+    }
+  }
+  
+  /* Ensure proper touch targets on mobile */
+  @media (max-width: 768px) {
+    button, a, [role="button"] {
+      @apply min-h-[44px] min-w-[44px];
+    }
+    
+    /* Mobile sidebar improvements */
+    .sidebar-mobile {
+      @apply w-full max-w-[280px];
+    }
+    
+    /* Mobile navigation improvements */
+    .nav-mobile {
+      @apply text-sm;
+    }
   }
   
   .navbar {

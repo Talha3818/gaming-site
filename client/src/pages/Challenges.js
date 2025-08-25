@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FaGamepad, FaClock, FaUser, FaTrophy, FaPlus, FaTimes, FaExpandArrowsAlt } from 'react-icons/fa';
+import { FaGamepad, FaClock, FaUser, FaTrophy, FaTimes, FaExpandArrowsAlt, FaUsers } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import { challengesAPI } from '../services/api';
 import toast from 'react-hot-toast';
-import CreateChallengeModal from '../components/challenges/CreateChallengeModal';
 import ChallengeCard from '../components/challenges/ChallengeCard';
 
 const Challenges = () => {
@@ -12,7 +11,6 @@ const Challenges = () => {
   const [challenges, setChallenges] = useState([]);
   const [myChallenges, setMyChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeTab, setActiveTab] = useState('available'); // 'available' or 'my-challenges'
   const [selectedGame, setSelectedGame] = useState('all');
 
@@ -73,24 +71,7 @@ const Challenges = () => {
     }
   };
 
-  const handleCreateChallenge = async (game, betAmount, scheduledDateTime, matchDuration) => {
-    try {
-      await challengesAPI.createChallenge({
-        game,
-        betAmount,
-        scheduledMatchTime: scheduledDateTime,
-        matchDuration
-      });
-      
-      toast.success('Challenge created successfully!');
-      setShowCreateModal(false);
-      await refreshUser();
-      loadChallenges(); // Reload to update the list
-    } catch (error) {
-      console.error('Error creating challenge:', error);
-      toast.error(error.response?.data?.message || 'Error creating challenge');
-    }
-  };
+
 
   const games = [
     { id: 'all', name: 'All Games', icon: '🎮' },
@@ -121,23 +102,11 @@ const Challenges = () => {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"
+        className="text-center"
       >
-        <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Challenges</h1>
-          <p className="text-dark-300">Accept challenges or create your own to compete with other players</p>
-          <p className="text-xs text-dark-400 mt-1">Challenge fee applies. Winning prize shown excludes platform fee.</p>
-        </div>
-        
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => setShowCreateModal(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <FaPlus />
-          Create Challenge
-        </motion.button>
+        <h1 className="text-3xl font-bold text-white mb-2">Available Challenges</h1>
+        <p className="text-dark-300">Accept challenges created by admins to compete with other players</p>
+        <p className="text-xs text-dark-400 mt-1">Challenge fee applies. Winning prize shown excludes platform fee.</p>
       </motion.div>
 
       {/* Game Filter */}
@@ -186,7 +155,7 @@ const Challenges = () => {
               : 'text-dark-300 hover:text-white'
           }`}
         >
-          My Challenges ({myChallenges.length})
+          My Accepted Challenges ({myChallenges.length})
         </button>
       </motion.div>
 
@@ -204,8 +173,8 @@ const Challenges = () => {
             </h3>
             <p className="text-dark-300">
               {activeTab === 'available' 
-                ? 'Be the first to create a challenge!' 
-                : 'Create your first challenge to get started!'
+                ? 'No challenges available at the moment. Check back later!' 
+                : 'You haven\'t accepted any challenges yet!'
               }
             </p>
           </div>
@@ -218,19 +187,13 @@ const Challenges = () => {
               onAccept={handleAcceptChallenge}
               onExtend={handleExtendChallenge}
               onCancel={handleCancelChallenge}
+              showParticipantCount={true}
             />
           ))
         )}
       </motion.div>
 
-      {/* Create Challenge Modal */}
-      {showCreateModal && (
-        <CreateChallengeModal
-          onClose={() => setShowCreateModal(false)}
-          onSubmit={handleCreateChallenge}
-          userBalance={user?.balance || 0}
-        />
-      )}
+
     </div>
   );
 };
