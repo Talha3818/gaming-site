@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { FaCoins, FaUpload, FaHistory, FaCheckCircle, FaTimesCircle, FaClock, FaDownload, FaMoneyBillWave, FaCreditCard } from 'react-icons/fa';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { paymentsAPI, withdrawalsAPI } from '../services/api';
+import { getBkashDepositNumber } from '../utils/systemSettings';
 import toast from 'react-hot-toast';
 
 const Payments = () => {
@@ -23,10 +24,19 @@ const Payments = () => {
   
   const queryClient = useQueryClient();
 
-  // Fetch bKash number
-  const { data: bkashData } = useQuery('bkash-number', paymentsAPI.getBkashNumber, {
-    onSuccess: (data) => setBkashNumber(data.bKashNumber)
-  });
+  // Fetch bKash number from system settings
+  useEffect(() => {
+    const fetchBkashNumber = async () => {
+      try {
+        const number = await getBkashDepositNumber();
+        setBkashNumber(number);
+      } catch (error) {
+        console.error('Error fetching bKash number:', error);
+        setBkashNumber('01XXXXXXXXX'); // Fallback
+      }
+    };
+    fetchBkashNumber();
+  }, []);
 
   // Fetch payment history
   const { data: paymentsData, isLoading: paymentsLoading } = useQuery(
@@ -181,14 +191,14 @@ const Payments = () => {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
+        className="md:flex items-center justify-between"
       >
         <div>
           <h1 className="text-3xl font-bold text-white">Payments</h1>
           <p className="text-dark-300 mt-2">Manage your deposits, withdrawals and view history</p>
         </div>
         
-        <div className="flex gap-3">
+        <div className="flex gap-3 mt-3 md:mt-0">
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}

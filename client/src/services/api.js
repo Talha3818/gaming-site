@@ -228,6 +228,12 @@ export const adminAPI = {
   getPaymentStats: () => 
     api.get('/admin/payments/stats/overview'),
   
+  // System Settings
+  getSystemSettings: () => api.get('/admin/settings'),
+  getSystemSetting: (key) => api.get(`/admin/settings/${key}`),
+  updateSystemSetting: (key, data) => api.put(`/admin/settings/${key}`, data),
+  deleteSystemSetting: (key) => api.delete(`/admin/settings/${key}`),
+  
   // Challenges
   getChallenges: (page = 1, limit = 10, status = '') => 
     api.get(`/admin/challenges?page=${page}&limit=${limit}&status=${status}`),

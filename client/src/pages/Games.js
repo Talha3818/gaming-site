@@ -1,40 +1,40 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { FaGamepad, FaTrophy, FaUsers, FaChartLine } from 'react-icons/fa';
+import React from "react";
+import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
+import { FaGamepad, FaTrophy, FaUsers, FaChartLine } from "react-icons/fa";
 
 const Games = () => {
   const games = [
     {
-      id: 'ludo-king',
-      name: 'Ludo King',
-      icon: '🎲',
-      description: 'Classic board game with strategic gameplay',
-      players: '2-4 players',
-      avgBet: '৳500',
+      id: "ludo-king",
+      name: "Ludo King",
+      icon: "🎲",
+      description: "Classic board game with strategic gameplay",
+      players: "2-4 players",
+      avgBet: "৳500",
       activeChallenges: 12,
-      color: 'from-purple-500 to-pink-500'
+      color: "from-purple-500 to-pink-500",
     },
     {
-      id: 'free-fire',
-      name: 'Free Fire',
-      icon: '🔫',
-      description: 'Battle royale shooting game with intense action',
-      players: '50 players',
-      avgBet: '৳800',
+      id: "free-fire",
+      name: "Free Fire",
+      icon: "🔫",
+      description: "Battle royale shooting game with intense action",
+      players: "50 players",
+      avgBet: "৳800",
       activeChallenges: 8,
-      color: 'from-orange-500 to-red-500'
+      color: "from-orange-500 to-red-500",
     },
     {
-      id: 'pubg',
-      name: 'PUBG',
-      icon: '🎯',
-      description: 'PlayerUnknown\'s Battlegrounds - ultimate survival',
-      players: '100 players',
-      avgBet: '৳1000',
+      id: "pubg",
+      name: "PUBG",
+      icon: "🎯",
+      description: "PlayerUnknown's Battlegrounds - ultimate survival",
+      players: "100 players",
+      avgBet: "৳1000",
       activeChallenges: 15,
-      color: 'from-green-500 to-blue-500'
-    }
+      color: "from-green-500 to-blue-500",
+    },
   ];
 
   return (
@@ -46,7 +46,9 @@ const Games = () => {
         className="text-center"
       >
         <h1 className="text-4xl font-bold text-white mb-4">Available Games</h1>
-        <p className="text-dark-300 text-lg">Choose your game and start challenging other players</p>
+        <p className="text-dark-300 text-lg">
+          Choose your game and start challenging other players
+        </p>
       </motion.div>
 
       {/* Games Grid */}
@@ -61,7 +63,9 @@ const Games = () => {
             className="gaming-card overflow-hidden"
           >
             {/* Game Header */}
-            <div className={`h-32 bg-gradient-to-r ${game.color} flex items-center justify-center`}>
+            <div
+              className={`h-32 bg-gradient-to-r ${game.color} flex items-center justify-center`}
+            >
               <div className="text-6xl">{game.icon}</div>
             </div>
 
@@ -78,7 +82,9 @@ const Games = () => {
                 </div>
                 <div className="text-center">
                   <div className="text-sm text-dark-300">Avg Bet</div>
-                  <div className="font-semibold text-primary-400">{game.avgBet}</div>
+                  <div className="font-semibold text-primary-400">
+                    {game.avgBet}
+                  </div>
                 </div>
               </div>
 
@@ -86,23 +92,36 @@ const Games = () => {
               <div className="flex items-center justify-between p-3 bg-dark-700 rounded-lg">
                 <div className="flex items-center gap-2">
                   <FaTrophy className="text-yellow-400" />
-                  <span className="text-sm text-dark-300">Active Challenges</span>
+                  <span className="text-sm text-dark-300">
+                    Active Challenges
+                  </span>
                 </div>
-                <span className="font-semibold text-white">{game.activeChallenges}</span>
+                <span className="font-semibold text-white">
+                  {game.activeChallenges}
+                </span>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3">
+              <div className="w-full gap-3 hidden md:flex">
                 <Link
                   to={`/games/${game.id}`}
-                  className="btn-outline flex-1 text-center"
+                  className="btn-outline text-center"
                 >
                   View Details
                 </Link>
+                <Link to="/challenges" className="btn-primary text-center">
+                  Create Challenge
+                </Link>
+              </div>
+
+              <div className="w-full flex gap-3 justify-center md:hidden">
                 <Link
-                  to="/challenges"
-                  className="btn-primary flex-1 text-center"
+                  to={`/games/${game.id}`}
+                  className="btn-outline text-center"
                 >
+                  View Details
+                </Link>
+                <Link to="/challenges" className="btn-primary text-center">
                   Create Challenge
                 </Link>
               </div>
@@ -122,13 +141,13 @@ const Games = () => {
           <h3 className="text-xl font-bold text-white mb-2">3 Games</h3>
           <p className="text-dark-300">Available for challenges</p>
         </div>
-        
+
         <div className="gaming-card p-6 text-center">
           <div className="text-4xl mb-4">🏆</div>
           <h3 className="text-xl font-bold text-white mb-2">35 Active</h3>
           <p className="text-dark-300">Challenges waiting</p>
         </div>
-        
+
         <div className="gaming-card p-6 text-center">
           <div className="text-4xl mb-4">💰</div>
           <h3 className="text-xl font-bold text-white mb-2">৳25,000</h3>

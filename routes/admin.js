@@ -1366,4 +1366,102 @@ router.get('/withdrawals/stats/overview', async (req, res) => {
   }
 });
 
+// ==================== SYSTEM SETTINGS ====================
+
+// Get all system settings
+router.get('/settings', async (req, res) => {
+  try {
+    const SystemSettings = require('../models/SystemSettings');
+    const settings = await SystemSettings.find().sort({ key: 1 });
+    res.json(settings);
+  } catch (error) {
+    console.error('Get system settings error:', error);
+    res.status(500).json({ message: 'Error fetching system settings' });
+  }
+});
+
+// Get specific system setting
+router.get('/settings/:key', async (req, res) => {
+  try {
+    const SystemSettings = require('../models/SystemSettings');
+    const setting = await SystemSettings.findOne({ key: req.params.key });
+    
+    if (!setting) {
+      return res.status(404).json({ message: 'Setting not found' });
+    }
+    
+    res.json(setting);
+  } catch (error) {
+    console.error('Get system setting error:', error);
+    res.status(500).json({ message: 'Error fetching system setting' });
+  }
+});
+
+// Update system setting
+router.put('/settings/:key', async (req, res) => {
+  try {
+    const SystemSettings = require('../models/SystemSettings');
+    const { value, description } = req.body;
+    
+    if (value === undefined) {
+      return res.status(400).json({ message: 'Value is required' });
+    }
+    
+    let setting = await SystemSettings.findOne({ key: req.params.key });
+    
+    if (setting) {
+      // Update existing setting
+      setting.value = value;
+      if (description) setting.description = description;
+      setting.updatedBy = req.user.userId;
+      await setting.save();
+    } else {
+      // Create new setting
+      setting = new SystemSettings({
+        key: req.params.key,
+        value,
+        description: description || req.params.key,
+        updatedBy: req.user.userId
+      });
+      await setting.save();
+    }
+    
+    res.json({ 
+      message: 'Setting updated successfully',
+      setting: {
+        key: setting.key,
+        value: setting.value,
+        description: setting.description,
+        updatedAt: setting.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error('Update system setting error:', error);
+    res.status(500).json({ message: 'Error updating system setting' });
+  }
+});
+
+// Delete system setting
+router.delete('/settings/:key', async (req, res) => {
+  try {
+    const SystemSettings = require('../models/SystemSettings');
+    const setting = await SystemSettings.findOne({ key: req.params.key });
+    
+    if (!setting) {
+      return res.status(404).json({ message: 'Setting not found' });
+    }
+    
+    if (!setting.isEditable) {
+      return res.status(400).json({ message: 'This setting cannot be deleted' });
+    }
+    
+    await SystemSettings.deleteOne({ key: req.params.key });
+    
+    res.json({ message: 'Setting deleted successfully' });
+  } catch (error) {
+    console.error('Delete system setting error:', error);
+    res.status(500).json({ message: 'Error deleting system setting' });
+  }
+});
+
 module.exports = router;

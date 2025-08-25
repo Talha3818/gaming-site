@@ -35,6 +35,7 @@ A professional gaming challenge platform where users can challenge each other in
 - **Challenge Management**: Monitor and manage challenges
 - **Support System**: Handle helpline conversations
 - **Analytics**: Platform statistics and insights
+- **System Settings**: Manage platform configuration including bKash numbers, site settings, and payment limits
 
 ## Tech Stack
 
@@ -99,6 +100,17 @@ JWT_SECRET=your-super-secret-jwt-key
 # bKash Number
 BKASH_NUMBER=01XXXXXXXXX
 
+# Cloudinary Configuration
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+
+# Email Configuration (SMTP)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
+
 # Optional: SMS Service (for production)
 TWILIO_ACCOUNT_SID=your-twilio-account-sid
 TWILIO_AUTH_TOKEN=your-twilio-auth-token
@@ -112,6 +124,20 @@ mongod
 
 # The application will automatically create the necessary collections
 ```
+
+### 4. Initialize System Settings
+
+Before starting the application, initialize the default system settings:
+
+```bash
+npm run init-settings
+```
+
+This will create default settings including:
+- bKash deposit number
+- Site name and support email
+- Payment limits
+- Maintenance mode toggle
 
 ### 5. Start the Application
 
@@ -174,6 +200,10 @@ npm start
 - `GET /api/admin/payments` - Get all payments
 - `PUT /api/admin/payments/:id/approve` - Approve payment
 - `PUT /api/admin/payments/:id/reject` - Reject payment
+- `GET /api/admin/settings` - Get all system settings
+- `GET /api/admin/settings/:key` - Get specific system setting
+- `PUT /api/admin/settings/:key` - Update system setting
+- `DELETE /api/admin/settings/:key` - Delete system setting
 
 ## Socket.IO Events
 
@@ -214,6 +244,11 @@ npm start
 - User, message content
 - Message type, attachments
 - Admin responses, read status
+
+### SystemSettings
+- Key-value configuration pairs
+- Editable flags and descriptions
+- Update tracking and admin audit
 
 ## Deployment
 

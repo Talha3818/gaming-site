@@ -9,7 +9,8 @@
     "build": "webpack --mode production",
     "client": "cd client && npm start",
     "server": "nodemon server.js",
-    "dev:full": "concurrently \"npm run server\" \"npm run client\""
+    "dev:full": "concurrently \"npm run server\" \"npm run client\"",
+    "init-settings": "node scripts/init-system-settings.js"
   },
   "dependencies": {
     "express": "^4.18.2",

@@ -24,8 +24,19 @@ const upload = multer({
 // Get bKash number for deposits
 router.get('/bkash-number', async (req, res) => {
   try {
-    // This would typically come from environment variables or admin settings
-    const bKashNumber = process.env.BKASH_NUMBER || '01XXXXXXXXX';
+    // Try to get from system settings first, fallback to environment variable
+    let bKashNumber = process.env.BKASH_NUMBER || '01XXXXXXXXX';
+    
+    try {
+      const SystemSettings = require('../models/SystemSettings');
+      const setting = await SystemSettings.findOne({ key: 'bkash_deposit_number' });
+      if (setting && setting.value) {
+        bKashNumber = setting.value;
+      }
+    } catch (settingsError) {
+      console.log('System settings not available, using environment variable');
+    }
+    
     res.json({ bKashNumber });
   } catch (error) {
     console.error('Get bKash number error:', error);

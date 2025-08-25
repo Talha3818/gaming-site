@@ -270,7 +270,7 @@ const Dashboard = () => {
         className="gaming-card"
       >
         <h2 className="text-xl font-bold mb-6">Game Performance</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {Object.entries(gameStats).map(([gameId, stats]) => (
             <div key={gameId} className="text-center p-4 bg-dark-700/50 rounded-lg">
               <div className="text-2xl mb-2">

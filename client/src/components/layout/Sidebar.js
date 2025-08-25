@@ -31,7 +31,8 @@ const Sidebar = ({ isCollapsed, onToggle, onClose }) => {
     { to: '/admin/users', icon: FaUser, label: 'Manage Users', color: 'text-pink-400' },
     { to: '/admin/challenges', icon: FaTrophy, label: 'Create Challenges', color: 'text-yellow-400' },
     { to: '/admin/payments', icon: FaCreditCard, label: 'Manage Payments', color: 'text-orange-400' },
-    { to: '/admin/helpline', icon: FaHeadset, label: 'Manage Helpline', color: 'text-red-400' }
+    { to: '/admin/helpline', icon: FaHeadset, label: 'Manage Helpline', color: 'text-red-400' },
+    { to: '/admin/settings', icon: FaCog, label: 'System Settings', color: 'text-blue-400' }
   ];
 
   return (
@@ -169,7 +170,7 @@ const Sidebar = ({ isCollapsed, onToggle, onClose }) => {
                   key={item.to}
                   to={item.to}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group ${
+                    `flex items-center gap-3 pl-3 pr-7 py-2 rounded-lg transition-all duration-200 group ${
                       isActive
                         ? 'bg-primary-500 text-white'
                         : 'text-dark-300 hover:bg-dark-700 hover:text-white'
@@ -222,7 +223,7 @@ const Sidebar = ({ isCollapsed, onToggle, onClose }) => {
                         }`
                       }
                     >
-                      <item.icon size={20} className="flex-shrink-0" />
+                      <item.icon size={18} className="flex-shrink-0" />
                       <AnimatePresence mode="wait">
                         {!isCollapsed && (
                           <motion.span

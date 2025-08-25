@@ -27,6 +27,7 @@ import AdminChallenges from './pages/admin/Challenges';
 import AdminPayments from './pages/admin/Payments';
 import AdminWithdrawals from './pages/admin/Withdrawals';
 import AdminHelpline from './pages/admin/Helpline';
+import SystemSettings from './pages/admin/SystemSettings';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
@@ -65,14 +66,14 @@ const AppContent = () => {
   }
 
   return (
-    <div className="flex h-screen bg-dark-900">
+    <div className="min-h-screen bg-dark-900">
       <Sidebar isCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
       
       <div className={`flex-1 flex flex-col transition-all duration-300 ${
         sidebarCollapsed ? 'ml-16' : 'ml-64'
       }`}>
         <Navbar />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 p-6">
           <Routes>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/games" element={<Games />} />
@@ -130,6 +131,14 @@ const AppContent = () => {
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <AdminHelpline />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/settings" 
+              element={
+                <ProtectedRoute requireAdmin={true}>
+                  <SystemSettings />
                 </ProtectedRoute>
               } 
             />

@@ -576,8 +576,8 @@ const Login = () => {
           <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full mb-4">
             <span className="text-3xl font-bold text-white">G</span>
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Gaming Arena</h1>
-          <p className="text-blue-200">Challenge, Compete, Win!</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Gaming Dreamer</h1>
+          <p className="text-blue-200">Make your dream, show your gaming skills</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">

@@ -416,6 +416,14 @@ const AdminDashboard = () => {
             <FaHeadset className="text-red-400 text-2xl mx-auto mb-2" />
             <p className="text-white font-medium">Helpline</p>
           </Link>
+          
+          <Link
+            to="/admin/settings"
+            className="bg-dark-700 hover:bg-dark-600 rounded-lg p-4 text-center transition-colors duration-200"
+          >
+            <FaCog className="text-blue-400 text-2xl mx-auto mb-2" />
+            <p className="text-white font-medium">System Settings</p>
+          </Link>
         </div>
       </motion.div>
 

@@ -16,13 +16,13 @@ const Navbar = () => {
     <motion.nav
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-dark-800 border-b border-dark-600 px-6 py-4"
+      className="bg-dark-800 border-b border-dark-600 px-6 py-4 w-full"
     >
       <div className="flex items-center justify-between">
         {/* Left side - Balance and Support */}
         <div className="flex items-center gap-6">
           {/* Balance Display */}
-          <div className="flex items-center gap-3 bg-dark-700 rounded-lg px-4 py-2">
+          <div className="items-center gap-3 bg-dark-700 rounded-lg px-4 py-2 md:flex hidden">
             <FaCoins className="text-yellow-400" />
             <div>
               <p className="text-xs text-dark-300">Balance</p>
@@ -52,7 +52,7 @@ const Navbar = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="relative p-2 text-dark-300 hover:text-white hover:bg-dark-700 rounded-lg transition-colors duration-200"
+            className="relative p-2 text-dark-300 hover:text-white hover:bg-dark-700 rounded-lg transition-colors duration-200 md:block hidden"
           >
             <FaBell size={20} />
             {/* Add notification badge here if needed */}
