@@ -30,7 +30,7 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
 app.use(compression());
-app.use(cors({ origin: 'https://www.gamingdreamer.com' }));
+app.use(cors({ origin: ['https://www.gamingdreamer.com', 'http://localhost:3000'] }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 

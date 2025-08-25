@@ -131,9 +131,6 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
                       <span className="text-white font-bold">{user?.username?.charAt(0)?.toUpperCase() || 'U'}</span>
                     </div>
                   </div>
-                  <div className="bg-dark-700 rounded-lg p-2 text-center">
-                    <p className="text-yellow-400 font-bold text-sm">৳{user?.balance?.toLocaleString() || '0'}</p>
-                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -147,7 +144,7 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
                   key={item.to}
                   to={item.to}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group ${
+                    `flex items-center gap-3 pl-3 pr-7 py-2 rounded-lg transition-all duration-200 group ${
                       isActive
                         ? 'bg-primary-500 text-white'
                         : 'text-dark-300 hover:bg-dark-700 hover:text-white'
@@ -200,7 +197,7 @@ const Sidebar = ({ isCollapsed, onToggle }) => {
                         }`
                       }
                     >
-                      <item.icon size={20} className="flex-shrink-0" />
+                      <item.icon size={18} className="flex-shrink-0" />
                       <AnimatePresence mode="wait">
                         {!isCollapsed && (
                           <motion.span
