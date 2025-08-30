@@ -6,6 +6,7 @@ const Challenge = require('../models/Challenge');
 const Payment = require('../models/Payment');
 const HelplineMessage = require('../models/HelplineMessage');
 const Withdrawal = require('../models/Withdrawal');
+const mongoose = require('mongoose'); // Added for system settings test
 
 // Apply adminAuth middleware to all routes
 router.use(adminAuth);
@@ -532,7 +533,16 @@ router.post('/challenges', async (req, res) => {
 
     // Validate game restrictions for 4-player challenges
     if (playerCount === 4 && !['PUBG', 'Free Fire'].includes(game)) {
-      return res.status(400).json({ message: '4-player challenges are only available for PUBG and Free Fire games' });
+      return res.status(400).json({ 
+        message: '4-player challenges are only available for PUBG and Free Fire games' 
+      });
+    }
+
+    // Validate game restrictions for 2-player challenges
+    if (playerCount === 2 && !['Ludo King', 'Free Fire', 'PUBG'].includes(game)) {
+      return res.status(400).json({ 
+        message: 'Invalid game selected for 2-player challenge' 
+      });
     }
 
     // Validate bet amount
@@ -545,6 +555,11 @@ router.post('/challenges', async (req, res) => {
     const now = new Date();
     if (scheduledTime <= now) {
       return res.status(400).json({ message: 'Scheduled time must be in the future' });
+    }
+
+    // Validate match duration
+    if (matchDuration < 15 || matchDuration > 120) {
+      return res.status(400).json({ message: 'Match duration must be between 15 and 120 minutes' });
     }
 
     // Create challenge with admin as creator (not participant)
@@ -560,14 +575,28 @@ router.post('/challenges', async (req, res) => {
       status: 'pending',
       expiresAt: new Date(scheduledTime.getTime() - 30 * 60 * 1000), // Expire 30 minutes before match
       isAdminCreated: true,
-      participants: [] // Start with empty participants array
+      participants: [], // Start with empty participants array
+      // Set specific game category
+      gameCategory: playerCount === 4 ? 'battle-royale' : 'board-game'
     });
 
     await challenge.save();
 
+    // Emit socket event for new admin challenge
+    if (req.app.get('io')) {
+      req.app.get('io').emit('new-admin-challenge', {
+        challengeId: challenge._id,
+        game: challenge.game,
+        playerCount: challenge.playerCount,
+        betAmount: challenge.betAmount,
+        scheduledMatchTime: challenge.scheduledMatchTime
+      });
+    }
+
     res.status(201).json({ 
       message: 'Challenge created successfully', 
-      challenge 
+      challenge,
+      note: `Admin challenge created. ${playerCount} players need to join to start the match.`
     });
   } catch (error) {
     console.error('Create challenge error:', error);
@@ -1366,6 +1395,46 @@ router.get('/withdrawals/stats/overview', async (req, res) => {
   }
 });
 
+// Test system settings endpoint
+router.get('/settings-test', async (req, res) => {
+  try {
+    const SystemSettings = require('../models/SystemSettings');
+    
+    // Check if SystemSettings collection exists
+    const collections = await mongoose.connection.db.listCollections().toArray();
+    const hasSystemSettings = collections.some(col => col.name === 'systemsettings');
+    
+    // Get current settings
+    const currentSettings = await SystemSettings.find().sort({ key: 1 });
+    
+    // Check bKash setting specifically
+    const bkashSetting = await SystemSettings.findOne({ key: 'bkash_deposit_number' });
+    
+    res.json({
+      message: 'System settings test completed',
+      hasSystemSettingsCollection: hasSystemSettings,
+      totalSettings: currentSettings.length,
+      currentSettings: currentSettings.map(s => ({ key: s.key, value: s.value, description: s.description })),
+      bkashSetting: bkashSetting ? {
+        key: bkashSetting.key,
+        value: bkashSetting.value,
+        description: bkashSetting.description,
+        updatedAt: bkashSetting.updatedAt
+      } : null,
+      environment: {
+        BKASH_NUMBER: process.env.BKASH_NUMBER || 'Not set',
+        NODE_ENV: process.env.NODE_ENV || 'Not set'
+      }
+    });
+  } catch (error) {
+    console.error('System settings test error:', error);
+    res.status(500).json({ 
+      message: 'Error testing system settings: ' + error.message,
+      error: error.toString()
+    });
+  }
+});
+
 // ==================== SYSTEM SETTINGS ====================
 
 // Get all system settings
@@ -1403,7 +1472,10 @@ router.put('/settings/:key', async (req, res) => {
     const SystemSettings = require('../models/SystemSettings');
     const { value, description } = req.body;
     
+    console.log('📝 Updating system setting:', req.params.key, { value, description });
+    
     if (value === undefined) {
+      console.log('❌ Value is missing from request body');
       return res.status(400).json({ message: 'Value is required' });
     }
     
@@ -1411,12 +1483,15 @@ router.put('/settings/:key', async (req, res) => {
     
     if (setting) {
       // Update existing setting
+      console.log('🔄 Updating existing setting:', setting.key, 'from', setting.value, 'to', value);
       setting.value = value;
       if (description) setting.description = description;
       setting.updatedBy = req.user.userId;
       await setting.save();
+      console.log('✅ Setting updated successfully');
     } else {
       // Create new setting
+      console.log('🆕 Creating new setting:', req.params.key, 'with value:', value);
       setting = new SystemSettings({
         key: req.params.key,
         value,
@@ -1424,6 +1499,7 @@ router.put('/settings/:key', async (req, res) => {
         updatedBy: req.user.userId
       });
       await setting.save();
+      console.log('✅ New setting created successfully');
     }
     
     res.json({ 
@@ -1436,8 +1512,8 @@ router.put('/settings/:key', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Update system setting error:', error);
-    res.status(500).json({ message: 'Error updating system setting' });
+    console.error('❌ Update system setting error:', error);
+    res.status(500).json({ message: 'Error updating system setting: ' + error.message });
   }
 });
 

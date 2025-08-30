@@ -131,6 +131,55 @@ const AdminChallenges = () => {
     }
   };
 
+  // Helper function to get challenge status display
+  const getChallengeStatusDisplay = (challenge) => {
+    if (challenge.isAdminCreated) {
+      if (challenge.status === 'pending') {
+        const participantCount = challenge.participants?.length || 0;
+        const remainingSlots = challenge.maxParticipants - participantCount;
+        if (remainingSlots === 0) {
+          return { text: 'Ready to Start', color: 'text-green-400', bg: 'bg-green-400/10' };
+        } else {
+          return { 
+            text: `${participantCount}/${challenge.maxParticipants} Players`, 
+            color: 'text-yellow-400', 
+            bg: 'bg-yellow-400/10' 
+          };
+        }
+      }
+    }
+    
+    // Default status display
+    const statusConfig = {
+      'pending': { text: 'Pending', color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
+      'accepted': { text: 'Accepted', color: 'text-green-400', bg: 'bg-green-400/10' },
+      'in-progress': { text: 'In Progress', color: 'text-blue-400', bg: 'bg-blue-400/10' },
+      'completed': { text: 'Completed', color: 'text-gray-400', bg: 'bg-gray-400/10' },
+      'cancelled': { text: 'Cancelled', color: 'text-red-400', bg: 'bg-red-400/10' }
+    };
+    
+    return statusConfig[challenge.status] || { text: challenge.status, color: 'text-gray-400', bg: 'bg-gray-400/10' };
+  };
+
+  // Helper function to get challenge type display
+  const getChallengeTypeDisplay = (challenge) => {
+    if (challenge.isAdminCreated) {
+      return {
+        text: `Admin ${challenge.playerCount}-Player`,
+        color: 'text-purple-400',
+        bg: 'bg-purple-400/10',
+        icon: '👑'
+      };
+    }
+    
+    return {
+      text: `${challenge.playerCount}-Player`,
+      color: 'text-blue-400',
+      bg: 'bg-blue-400/10',
+      icon: '👤'
+    };
+  };
+
   const handleStartMatch = () => {
     if (!roomCode.trim()) {
       toast.error('Please enter a room code');
@@ -385,29 +434,16 @@ const AdminChallenges = () => {
                     <div className="space-y-1">
                       <div className="text-sm">
                         <span className="text-dark-300">Type:</span>
-                        <span className="text-white ml-2">{challenge.playerCount || 2}-Player</span>
-                      </div>
-                      <div className="text-sm">
-                        <span className="text-dark-300">Challenger:</span>
-                        <span className="text-white ml-2">
-                          {challenge.challenger ? challenge.challenger.username : 'Waiting...'}
+                        <span className={`ml-2 px-2 py-1 rounded text-xs font-medium ${getChallengeTypeDisplay(challenge).bg} ${getChallengeTypeDisplay(challenge).color}`}>
+                          {getChallengeTypeDisplay(challenge).icon} {getChallengeTypeDisplay(challenge).text}
                         </span>
                       </div>
-                      {challenge.playerCount === 2 ? (
-                        <>
-                          {challenge.accepter && (
-                            <div className="text-sm">
-                              <span className="text-dark-300">Accepter:</span>
-                              <span className="text-white ml-2">{challenge.accepter.username}</span>
-                            </div>
-                          )}
-                        </>
-                      ) : (
+                      {challenge.isAdminCreated ? (
                         <>
                           <div className="text-sm">
                             <span className="text-dark-300">Participants:</span>
                             <span className="text-white ml-2">
-                              {challenge.participants?.length || 0}/{challenge.maxParticipants || 4}
+                              {challenge.participants?.length || 0}/{challenge.maxParticipants || challenge.playerCount}
                             </span>
                           </div>
                           {challenge.participants && challenge.participants.length > 0 && (
@@ -418,6 +454,48 @@ const AdminChallenges = () => {
                                 </span>
                               ))}
                             </div>
+                          )}
+                          {challenge.participants?.length === 0 && (
+                            <div className="text-xs text-yellow-400">
+                              Waiting for players to join...
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-sm">
+                            <span className="text-dark-300">Challenger:</span>
+                            <span className="text-white ml-2">
+                              {challenge.challenger ? challenge.challenger.username : 'Waiting...'}
+                            </span>
+                          </div>
+                          {challenge.playerCount === 2 ? (
+                            <>
+                              {challenge.accepter && (
+                                <div className="text-sm">
+                                  <span className="text-dark-300">Accepter:</span>
+                                  <span className="text-white ml-2">{challenge.accepter.username}</span>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <div className="text-sm">
+                                <span className="text-dark-300">Participants:</span>
+                                <span className="text-white ml-2">
+                                  {challenge.participants?.length || 0}/{challenge.maxParticipants || 4}
+                                </span>
+                              </div>
+                              {challenge.participants && challenge.participants.length > 0 && (
+                                <div className="text-xs text-dark-400">
+                                  {challenge.participants.map((p, i) => (
+                                    <span key={p.user._id || i} className="block">
+                                      {p.user.username || 'Unknown'}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </>
                           )}
                         </>
                       )}
@@ -436,8 +514,8 @@ const AdminChallenges = () => {
                     </div>
                   </td>
                   <td className="p-3">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(challenge.status)}`}>
-                      {getStatusText(challenge.status)}
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getChallengeStatusDisplay(challenge).bg} ${getChallengeStatusDisplay(challenge).color}`}>
+                      {getChallengeStatusDisplay(challenge).text}
                     </span>
                   </td>
                   <td className="p-3">
@@ -450,52 +528,123 @@ const AdminChallenges = () => {
                   </td>
                   <td className="p-3">
                     <div className="flex items-center gap-2">
-                      {challenge.status === 'accepted' && (
+                      {challenge.isAdminCreated ? (
+                        // Admin-created challenge actions
                         <>
-                          <button
-                            onClick={() => {
-                              setSelectedChallenge(challenge);
-                              setShowStartMatchModal(true);
-                            }}
-                            disabled={!challenge.participants || challenge.participants.length === 0}
-                            className={`p-2 rounded ${
-                              challenge.participants && challenge.participants.length > 0
-                                ? 'text-blue-400 hover:text-blue-300 hover:bg-blue-400/10'
-                                : 'text-gray-400 cursor-not-allowed'
-                            }`}
-                            title={
-                              challenge.participants && challenge.participants.length > 0
-                                ? 'Start Match'
-                                : 'No participants to start match'
-                            }
-                          >
-                            <FaPlay />
-                          </button>
-                          {!challenge.adminRoomCode ? (
-                            <button
-                              onClick={() => openRoomCodeModal(challenge, 'provide')}
-                              disabled={!challenge.participants || challenge.participants.length === 0}
-                              className={`p-2 rounded ${
-                                challenge.participants && challenge.participants.length > 0
-                                  ? 'text-green-400 hover:text-green-300 hover:bg-green-400/10'
-                                  : 'text-gray-400 cursor-not-allowed'
-                              }`}
-                              title={
-                                challenge.participants && challenge.participants.length > 0
-                                  ? 'Provide Room Code'
-                                  : 'No participants to provide room code'
-                              }
-                            >
-                              <FaEye />
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => openRoomCodeModal(challenge, 'update')}
-                              className="p-2 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 rounded"
-                              title="Update Room Code"
-                            >
-                              <FaEdit />
-                            </button>
+                          {challenge.status === 'pending' && (
+                            <>
+                              {challenge.participants?.length === challenge.maxParticipants ? (
+                                // All players joined, can start match
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedChallenge(challenge);
+                                      setShowStartMatchModal(true);
+                                    }}
+                                    className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 rounded"
+                                    title="Start Match - All players joined!"
+                                  >
+                                    <FaPlay />
+                                  </button>
+                                  <button
+                                    onClick={() => openRoomCodeModal(challenge, 'provide')}
+                                    className="p-2 text-green-400 hover:text-green-300 hover:bg-green-400/10 rounded"
+                                    title="Provide Room Code"
+                                  >
+                                    <FaEye />
+                                  </button>
+                                </>
+                              ) : (
+                                // Waiting for players
+                                <span className="text-xs text-yellow-400 px-2 py-1 bg-yellow-400/10 rounded">
+                                  Waiting for {challenge.maxParticipants - (challenge.participants?.length || 0)} more player{challenge.maxParticipants - (challenge.participants?.length || 0) > 1 ? 's' : ''}
+                                </span>
+                              )}
+                            </>
+                          )}
+                          {challenge.status === 'accepted' && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setSelectedChallenge(challenge);
+                                  setShowStartMatchModal(true);
+                                }}
+                                className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 rounded"
+                                title="Start Match"
+                              >
+                                <FaPlay />
+                              </button>
+                              {!challenge.adminRoomCode ? (
+                                <button
+                                  onClick={() => openRoomCodeModal(challenge, 'provide')}
+                                  className="p-2 text-green-400 hover:text-green-300 hover:bg-green-400/10 rounded"
+                                  title="Provide Room Code"
+                                >
+                                  <FaEye />
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => openRoomCodeModal(challenge, 'update')}
+                                  className="p-2 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 rounded"
+                                  title="Update Room Code"
+                                >
+                                  <FaEdit />
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        // Regular challenge actions
+                        <>
+                          {challenge.status === 'accepted' && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setSelectedChallenge(challenge);
+                                  setShowStartMatchModal(true);
+                                }}
+                                disabled={!challenge.participants || challenge.participants.length === 0}
+                                className={`p-2 rounded ${
+                                  challenge.participants && challenge.participants.length > 0
+                                    ? 'text-blue-400 hover:text-blue-300 hover:bg-blue-400/10'
+                                    : 'text-gray-400 cursor-not-allowed'
+                                }`}
+                                title={
+                                  challenge.participants && challenge.participants.length > 0
+                                    ? 'Start Match'
+                                    : 'No participants to start match'
+                                }
+                              >
+                                <FaPlay />
+                              </button>
+                              {!challenge.adminRoomCode ? (
+                                <button
+                                  onClick={() => openRoomCodeModal(challenge, 'provide')}
+                                  disabled={!challenge.participants || challenge.participants.length === 0}
+                                  className={`p-2 rounded ${
+                                    challenge.participants && challenge.participants.length > 0
+                                      ? 'text-green-400 hover:text-green-300 hover:bg-green-400/10'
+                                      : 'text-gray-400 cursor-not-allowed'
+                                  }`}
+                                  title={
+                                    challenge.participants && challenge.participants.length > 0
+                                      ? 'Provide Room Code'
+                                      : 'No participants to provide room code'
+                                  }
+                                >
+                                  <FaEye />
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => openRoomCodeModal(challenge, 'update')}
+                                  className="p-2 text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 rounded"
+                                  title="Update Room Code"
+                                >
+                                  <FaEdit />
+                                </button>
+                              )}
+                            </>
                           )}
                         </>
                       )}

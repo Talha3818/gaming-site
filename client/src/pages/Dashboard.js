@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { 
-  FaGamepad, 
-  FaTrophy, 
-  FaWallet, 
-  FaChartLine, 
-  FaUsers, 
+import {
+  FaGamepad,
+  FaTrophy,
+  FaWallet,
+  FaChartLine,
+  FaUsers,
   FaClock,
   FaPlus,
   FaSearch
@@ -14,6 +14,10 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { challengesAPI, gamesAPI } from '../services/api';
 import toast from 'react-hot-toast';
+
+// Import game logos
+import pubgLogo from '../assets/pubg.png';
+import freeFireLogo from '../assets/free-fire.png';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -34,7 +38,7 @@ const Dashboard = () => {
       ]);
 
       setRecentChallenges(challengesResponse.slice(0, 5));
-      
+
       // Get stats for each game
       const stats = {};
       for (const game of gamesResponse) {
@@ -236,10 +240,14 @@ const Dashboard = () => {
                 className="flex items-center justify-between p-4 bg-dark-700/50 rounded-lg border border-dark-600"
               >
                 <div className="flex items-center space-x-4">
-                  <div className="game-icon">
+                  <div className="game-icon flex items-center justify-center">
                     {challenge.game === 'Ludo King' && '🎲'}
-                    {challenge.game === 'Free Fire' && '🔥'}
-                    {challenge.game === 'PUBG' && '🎯'}
+                    {challenge.game === 'Free Fire' && (
+                      <img src={freeFireLogo} alt="Free Fire" className="w-6 h-6 object-contain" />
+                    )}
+                    {challenge.game === 'PUBG' && (
+                      <img src={pubgLogo} alt="PUBG" className="w-6 h-6 object-contain" />
+                    )}
                   </div>
                   <div>
                     <h3 className="font-semibold">{challenge.game}</h3>
@@ -273,14 +281,18 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {Object.entries(gameStats).map(([gameId, stats]) => (
             <div key={gameId} className="text-center p-4 bg-dark-700/50 rounded-lg">
-              <div className="text-2xl mb-2">
+              <div className="text-2xl mb-2 flex items-center justify-center">
                 {gameId === 'ludo-king' && '🎲'}
-                {gameId === 'free-fire' && '🔥'}
-                {gameId === 'pubg' && '🎯'}
+                {gameId === 'free-fire' && (
+                  <img src={freeFireLogo} alt="Free Fire" className="w-8 h-8 object-contain" />
+                )}
+                {gameId === 'pubg' && (
+                  <img src={pubgLogo} alt="PUBG" className="w-8 h-8 object-contain" />
+                )}
               </div>
               <h3 className="font-semibold mb-2">
-                {gameId === 'ludo-king' ? 'Ludo King' : 
-                 gameId === 'free-fire' ? 'Free Fire' : 'PUBG'}
+                {gameId === 'ludo-king' ? 'Ludo King' :
+                  gameId === 'free-fire' ? 'Free Fire' : 'PUBG'}
               </h3>
               <div className="space-y-1 text-sm">
                 <p className="text-dark-400">

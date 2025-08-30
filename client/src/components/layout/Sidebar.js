@@ -98,7 +98,7 @@ const Sidebar = ({ isCollapsed, onToggle, onClose }) => {
                   <div className="w-8 h-8 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-lg flex items-center justify-center">
                     <span className="text-white font-bold text-lg">G</span>
                   </div>
-                  <span className="text-xl font-bold text-white">Gaming Site</span>
+                  <span className="text-xl font-bold text-white">Gaming Dreamer</span>
                 </motion.div>
               ) : (
                 <motion.div

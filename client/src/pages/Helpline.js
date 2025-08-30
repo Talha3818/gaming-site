@@ -71,7 +71,7 @@ const Helpline = () => {
       >
         <div className="flex flex-wrap gap-3">
           <a
-            href="https://t.me/your_telegram"
+            href="https://t.me/Gamingdreamersupport"
             target="_blank"
             rel="noreferrer"
             className="btn-outline flex items-center gap-2"
@@ -79,7 +79,7 @@ const Helpline = () => {
             <FaTelegramPlane /> Telegram
           </a>
           <a
-            href="https://wa.me/1234567890"
+            href="https://wa.me/message/TUBNKXNEN2KIM1?src=qr"
             target="_blank"
             rel="noreferrer"
             className="btn-outline flex items-center gap-2"
@@ -87,7 +87,7 @@ const Helpline = () => {
             <FaWhatsapp /> WhatsApp
           </a>
           <a
-            href="https://m.me/your_facebook_page"
+            href="https://www.facebook.com/profile.php?id=61579688351869&mibextid=ZbWKwL"
             target="_blank"
             rel="noreferrer"
             className="btn-outline flex items-center gap-2"

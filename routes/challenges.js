@@ -92,14 +92,70 @@ router.get('/my-challenges', auth, async (req, res) => {
   }
 });
 
+// Get admin-created challenges (for users to join)
+router.get('/admin-challenges', async (req, res) => {
+  try {
+    const { page = 1, limit = 10, game = '' } = req.query;
+    const skip = (page - 1) * limit;
+
+    let query = {
+      isAdminCreated: true,
+      status: 'pending'
+    };
+
+    if (game) {
+      query.game = game;
+    }
+
+    const challenges = await Challenge.find(query)
+      .populate('participants.user', 'username profilePicture')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Challenge.countDocuments(query);
+    const totalPages = Math.ceil(total / limit);
+
+    res.json({
+      challenges,
+      totalPages,
+      currentPage: parseInt(page),
+      total
+    });
+  } catch (error) {
+    console.error('Get admin challenges error:', error);
+    res.status(500).json({ message: 'Error fetching admin challenges' });
+  }
+});
+
 // Create a new challenge
 router.post('/', auth, async (req, res) => {
   try {
-    const { game, betAmount, scheduledMatchTime, matchDuration = 30 } = req.body;
+    const { game, betAmount, scheduledMatchTime, matchDuration = 30, playerCount = 2 } = req.body;
 
     if (!game || !betAmount || !scheduledMatchTime) {
       return res.status(400).json({ message: 'Game, bet amount, and scheduled match time are required' });
     }
+
+    // Validate player count
+    if (![2, 4, 8, 50].includes(playerCount)) {
+      return res.status(400).json({ message: 'Invalid player count. Must be 2, 4, 8, or 50' });
+    }
+
+    // Validate game supports player count
+    if (playerCount === 4 && !['PUBG', 'Free Fire'].includes(game)) {
+      return res.status(400).json({ message: '4-player challenges are only available for PUBG and Free Fire' });
+    }
+    
+    if (playerCount === 8 && !['PUBG', 'Free Fire'].includes(game)) {
+      return res.status(400).json({ message: '8-player challenges are only available for PUBG and Free Fire' });
+    }
+    
+    if (playerCount === 50 && !['PUBG', 'Free Fire'].includes(game)) {
+      return res.status(400).json({ message: '50-player challenges are only available for PUBG and Free Fire' });
+    }
+
+
 
     // Validate bet amount
     if (betAmount < 10 || betAmount > 10000) {
@@ -141,7 +197,9 @@ router.post('/', auth, async (req, res) => {
       betAmount,
       scheduledMatchTime: scheduledTime,
       matchDuration,
-      isScheduled: true
+      playerCount,
+      isScheduled: true,
+      isLargeMatch: playerCount === 50
     });
 
     // Check for time conflicts
@@ -219,12 +277,41 @@ router.post('/:challengeId/accept', auth, async (req, res) => {
     // Accept the challenge using the new participant system
     await challenge.acceptChallenge(req.user.userId);
 
+    // Emit socket event for challenge acceptance
+    if (req.app.get('io')) {
+      req.app.get('io').emit('challenge-accepted', {
+        challengeId: challenge._id,
+        accepterId: req.user.userId,
+        challengerId: challenge.challenger,
+        game: challenge.game,
+        playerCount: challenge.playerCount,
+        currentParticipants: challenge.participants.length,
+        maxParticipants: challenge.maxParticipants
+      });
+    }
+
     const populatedChallenge = await Challenge.findById(challenge._id)
       .populate('challenger', 'username profilePicture')
       .populate('accepter', 'username profilePicture')
       .populate('participants.user', 'username profilePicture');
 
-    res.json(populatedChallenge);
+    // Customize response message based on challenge type
+    let message = 'Challenge accepted successfully!';
+    if (challenge.isAdminCreated) {
+      if (challenge.participants.length === challenge.maxParticipants) {
+        message = `Challenge is now full! All ${challenge.playerCount} players have joined. The match can now start.`;
+      } else {
+        const remainingSlots = challenge.maxParticipants - challenge.participants.length;
+        message = `Challenge accepted! ${remainingSlots} more player${remainingSlots > 1 ? 's' : ''} needed to start the match.`;
+      }
+    }
+
+    res.json({
+      message,
+      challenge: populatedChallenge,
+      remainingSlots: challenge.maxParticipants - challenge.participants.length,
+      isFull: challenge.participants.length === challenge.maxParticipants
+    });
   } catch (error) {
     console.error('Accept challenge error:', error);
     res.status(500).json({ message: 'Server error: ' + error.message });

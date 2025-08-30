@@ -636,6 +636,8 @@ const Login = () => {
           {renderForm()}
           </div>
 
+
+
           {/* Helpline Panel */}
           <div className="bg-white/10 backdrop-blur rounded-2xl border border-white/20 p-8 text-white">
             <div className="flex items-center gap-3 mb-4">
@@ -646,15 +648,15 @@ const Login = () => {
               Having trouble logging in? Reach us via any of the following channels.
             </p>
             <div className="grid grid-cols-1 gap-3">
-              <a href="https://t.me/your_telegram" target="_blank" rel="noreferrer" className="flex items-center gap-3 px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 transition">
+              <a href="https://t.me/Gamingdreamersupport" target="_blank" rel="noreferrer" className="flex items-center gap-3 px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 transition">
                 <FaTelegramPlane className="text-blue-300" />
                 <span>Telegram</span>
               </a>
-              <a href="https://wa.me/1234567890" target="_blank" rel="noreferrer" className="flex items-center gap-3 px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 transition">
+              <a href="https://wa.me/message/TUBNKXNEN2KIM1?src=qr/1234567890" target="_blank" rel="noreferrer" className="flex items-center gap-3 px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 transition">
                 <FaWhatsapp className="text-green-300" />
                 <span>WhatsApp</span>
               </a>
-              <a href="https://m.me/your_facebook_page" target="_blank" rel="noreferrer" className="flex items-center gap-3 px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 transition">
+              <a href="https://www.facebook.com/profile.php?id=61579688351869&mibextid=ZbWKwL" target="_blank" rel="noreferrer" className="flex items-center gap-3 px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 transition">
                 <FaFacebookMessenger className="text-blue-400" />
                 <span>Facebook Messenger</span>
               </a>

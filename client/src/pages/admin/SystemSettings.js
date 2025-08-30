@@ -1,33 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FaCog, FaSave, FaTrash, FaPlus, FaEdit, FaEye } from 'react-icons/fa';
+import { FaCog, FaSave, FaTrash, FaPlus, FaEdit, FaEye, FaPhone } from 'react-icons/fa';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { adminAPI } from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import toast from 'react-hot-toast';
 
 const SystemSettings = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingSetting, setEditingSetting] = useState(null);
   const [newSetting, setNewSetting] = useState({ key: '', value: '', description: '' });
+  const [bkashNumber, setBkashNumber] = useState('');
+  const [isUpdatingBkash, setIsUpdatingBkash] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch system settings
-  const { data: settings, isLoading, error } = useQuery(
+  const { data: settings, isLoading, error, refetch } = useQuery(
     ['admin-system-settings'],
     adminAPI.getSystemSettings,
     {
       refetchInterval: 30000,
+      onSuccess: (data) => {
+        console.log('✅ System settings loaded successfully:', data);
+      },
+      onError: (error) => {
+        console.error('❌ Error loading system settings:', error);
+      }
     }
   );
 
   // Update setting mutation
   const updateSettingMutation = useMutation(
-    adminAPI.updateSystemSetting,
+    ({ key, data }) => adminAPI.updateSystemSetting(key, data),
     {
-      onSuccess: () => {
+      onSuccess: (data, variables) => {
+        console.log('✅ Setting updated successfully:', variables.key, data);
         queryClient.invalidateQueries(['admin-system-settings']);
         setEditingSetting(null);
+        toast.success(`Setting "${variables.key}" updated successfully!`);
+        
+        // If it's the bKash number, update the local state
+        if (variables.key === 'bkash_deposit_number') {
+          setBkashNumber(variables.data.value);
+        }
       },
+      onError: (error, variables) => {
+        console.error('❌ Error updating setting:', variables.key, error);
+        toast.error(`Failed to update setting "${variables.key}": ${error.response?.data?.message || 'Unknown error'}`);
+      }
     }
   );
 
@@ -35,23 +55,84 @@ const SystemSettings = () => {
   const deleteSettingMutation = useMutation(
     adminAPI.deleteSystemSetting,
     {
-      onSuccess: () => {
+      onSuccess: (data, variables) => {
+        console.log('✅ Setting deleted successfully:', variables);
         queryClient.invalidateQueries(['admin-system-settings']);
+        toast.success(`Setting "${variables}" deleted successfully!`);
       },
+      onError: (error, variables) => {
+        console.error('❌ Error deleting setting:', variables, error);
+        toast.error(`Failed to delete setting "${variables}": ${error.response?.data?.message || 'Unknown error'}`);
+      }
     }
   );
 
   // Add new setting mutation
   const addSettingMutation = useMutation(
-    adminAPI.updateSystemSetting,
+    ({ key, data }) => adminAPI.updateSystemSetting(key, data),
     {
-      onSuccess: () => {
+      onSuccess: (data, variables) => {
+        console.log('✅ Setting added successfully:', variables.key, data);
         queryClient.invalidateQueries(['admin-system-settings']);
         setShowAddModal(false);
         setNewSetting({ key: '', value: '', description: '' });
+        toast.success(`Setting "${variables.key}" added successfully!`);
       },
+      onError: (error, variables) => {
+        console.error('❌ Error adding setting:', variables.key, error);
+        toast.error(`Failed to add setting "${variables.key}": ${error.response?.data?.message || 'Unknown error'}`);
+      }
     }
   );
+
+  // Update bKash number specifically
+  const updateBkashNumber = async () => {
+    console.log('🔄 Updating bKash number:', bkashNumber);
+    
+    if (!bkashNumber.trim()) {
+      toast.error('Please enter a valid bKash number');
+      return;
+    }
+
+    // Validate bKash number format (Bangladeshi mobile number)
+    const bkashRegex = /^(\+880|880|0)?1[3-9]\d{8}$/;
+    if (!bkashRegex.test(bkashNumber.trim())) {
+      toast.error('Please enter a valid Bangladeshi mobile number');
+      return;
+    }
+
+    setIsUpdatingBkash(true);
+    try {
+      console.log('📤 Sending bKash update request...');
+      // Send data in the format expected by the backend
+      await updateSettingMutation.mutateAsync({
+        key: 'bkash_deposit_number',
+        data: {
+          value: bkashNumber.trim(),
+          description: 'bKash number for deposits'
+        }
+      });
+      console.log('✅ bKash number updated successfully');
+    } catch (error) {
+      console.error('❌ Error updating bKash number:', error);
+    } finally {
+      setIsUpdatingBkash(false);
+    }
+  };
+
+  // Initialize bKash number from settings
+  useEffect(() => {
+    console.log('🔍 Initializing bKash number from settings:', settings);
+    if (settings) {
+      const bkashSetting = settings.find(s => s.key === 'bkash_deposit_number');
+      if (bkashSetting) {
+        console.log('📱 Found bKash setting:', bkashSetting.value);
+        setBkashNumber(bkashSetting.value || '');
+      } else {
+        console.log('⚠️ bKash setting not found in settings');
+      }
+    }
+  }, [settings]);
 
   const handleEdit = (setting) => {
     setEditingSetting(setting);
@@ -77,7 +158,7 @@ const SystemSettings = () => {
 
   const handleAdd = async () => {
     if (!newSetting.key || !newSetting.value) {
-      alert('Key and value are required');
+      toast.error('Key and value are required');
       return;
     }
     try {
@@ -147,6 +228,12 @@ const SystemSettings = () => {
       <div className="p-6">
         <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
           <p className="text-red-400">Error loading system settings: {error.message}</p>
+          <button 
+            onClick={() => refetch()} 
+            className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -167,6 +254,57 @@ const SystemSettings = () => {
           <FaPlus />
           Add Setting
         </button>
+      </div>
+
+      {/* bKash Number Management - Prominent Section */}
+      <div className="bg-blue-600/20 border border-blue-500/30 rounded-lg p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <FaPhone className="text-blue-400" size={24} />
+          <h3 className="text-xl font-semibold text-blue-400">bKash Number Management</h3>
+        </div>
+        <p className="text-blue-300 text-sm mb-4">
+          This is the bKash number that users will see when making deposits. Make sure to enter a valid Bangladeshi mobile number.
+        </p>
+        
+        <div className="flex flex-col lg:flex-row gap-4">
+          <div className="flex-1">
+            <label className="block text-blue-300 text-sm mb-2">bKash Number</label>
+            <input
+              type="text"
+              value={bkashNumber}
+              onChange={(e) => setBkashNumber(e.target.value)}
+              placeholder="e.g., 01712345678"
+              className="w-full px-4 py-2 bg-dark-700 border border-blue-500/50 rounded-lg text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
+            />
+            <p className="text-blue-300/70 text-xs mt-1">
+              Format: 01XXXXXXXXX (Bangladeshi mobile number)
+            </p>
+          </div>
+          <div className="flex items-end">
+            <button
+              onClick={updateBkashNumber}
+              disabled={isUpdatingBkash || !bkashNumber.trim()}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+            >
+              <FaSave />
+              {isUpdatingBkash ? 'Updating...' : 'Update bKash Number'}
+            </button>
+          </div>
+        </div>
+
+        {settings && (
+          <div className="mt-4 p-3 bg-dark-700/50 rounded border border-blue-500/20">
+            <p className="text-blue-300 text-sm">
+              <strong>Current bKash Number:</strong> {bkashNumber || 'Not set'}
+            </p>
+            <p className="text-blue-300/70 text-xs mt-1">
+              Last updated: {settings.find(s => s.key === 'bkash_deposit_number')?.updatedAt ? 
+                new Date(settings.find(s => s.key === 'bkash_deposit_number').updatedAt).toLocaleString() : 
+                'Never'
+              }
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Settings Grid */}
@@ -354,8 +492,27 @@ const SystemSettings = () => {
             className="p-4 bg-blue-600/20 border border-blue-500/30 rounded-lg hover:bg-blue-600/30 transition-colors"
           >
             <div className="text-blue-400 text-center">
+              <FaPhone size={24} className="mx-auto mb-2" />
+              <p className="text-sm font-medium">Edit bKash Number</p>
+            </div>
+          </button>
+          
+          <button
+            onClick={async () => {
+              try {
+                const testResult = await adminAPI.testSystemSettings();
+                console.log('🧪 System settings test result:', testResult);
+                toast.success('System settings test completed. Check console for details.');
+              } catch (error) {
+                console.error('❌ System settings test failed:', error);
+                toast.error('System settings test failed. Check console for details.');
+              }
+            }}
+            className="p-4 bg-yellow-600/20 border border-yellow-500/30 rounded-lg hover:bg-yellow-600/30 transition-colors"
+          >
+            <div className="text-yellow-400 text-center">
               <FaCog size={24} className="mx-auto mb-2" />
-              <p className="text-sm font-medium">Manage bKash Number</p>
+              <p className="text-sm font-medium">Test Settings</p>
             </div>
           </button>
           

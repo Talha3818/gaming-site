@@ -5,7 +5,7 @@ import { challengesAPI } from '../../services/api';
 import { formatDistanceToNow } from 'date-fns';
 import toast from 'react-hot-toast';
 
-const ChallengeCard = ({ challenge, currentUser, onAccept, onExtend, onCancel, showParticipantCount = false }) => {
+const ChallengeCard = ({ challenge, onAccept, onExtend, onCancel, onViewDetails, isAdminChallenge = false, userBalance = 0 }) => {
   const [timeRemaining, setTimeRemaining] = useState('');
   const [showExtendModal, setShowExtendModal] = useState(false);
   const [extendHours, setExtendHours] = useState(24);
@@ -14,14 +14,15 @@ const ChallengeCard = ({ challenge, currentUser, onAccept, onExtend, onCancel, s
   const [proofFile, setProofFile] = useState(null);
   const [submittingProof, setSubmittingProof] = useState(false);
 
-  const isChallenger = challenge.challenger && challenge.challenger._id === currentUser?.id;
-  const isAccepter = challenge.accepter && challenge.accepter._id === currentUser?.id;
-  const isParticipant = challenge.participants?.some(p => p.user._id === currentUser?.id) || isChallenger || isAccepter;
-  const canAccept = !isChallenger && !isAccepter && challenge.status === 'pending' && !isExpired && 
-    (!challenge.participants || challenge.participants.length < (challenge.maxParticipants || 2));
-  const canExtend = isChallenger && challenge.status === 'pending';
-  const canCancel = isChallenger && challenge.status === 'pending';
+  const isParticipant = challenge.participants?.some(p => p.user._id === challenge.currentUser?.id);
+  const canAccept = !isParticipant && challenge.status === 'pending' && !isExpired && 
+    (!challenge.participants || challenge.participants.length < (challenge.maxParticipants || challenge.playerCount));
+  const canExtend = challenge.challenger && challenge.challenger._id === challenge.currentUser?.id && challenge.status === 'pending';
+  const canCancel = challenge.challenger && challenge.challenger._id === challenge.currentUser?.id && challenge.status === 'pending';
   const canSeeRoomCode = isParticipant && challenge.status === 'in-progress' && challenge.adminRoomCode;
+
+  // Check if user has sufficient balance
+  const hasSufficientBalance = userBalance >= challenge.betAmount;
 
   useEffect(() => {
     const updateTimeRemaining = () => {
@@ -53,6 +54,14 @@ const ChallengeCard = ({ challenge, currentUser, onAccept, onExtend, onCancel, s
       });
     }
   }, [challenge.adminRoomCode, canSeeRoomCode, challenge.game, copied]);
+
+  const handleAccept = () => {
+    if (!hasSufficientBalance) {
+      toast.error(`Insufficient balance. You need ৳${challenge.betAmount} to join this challenge.`);
+      return;
+    }
+    onAccept(challenge._id);
+  };
 
   const handleExtend = () => {
     onExtend(challenge._id, extendHours);
@@ -100,6 +109,16 @@ const ChallengeCard = ({ challenge, currentUser, onAccept, onExtend, onCancel, s
   };
 
   const getStatusText = (status) => {
+    if (isAdminChallenge && status === 'pending') {
+      const participantCount = challenge.participants?.length || 0;
+      const remainingSlots = challenge.maxParticipants - participantCount;
+      if (remainingSlots === 0) {
+        return 'Ready to Start';
+      } else {
+        return `${participantCount}/${challenge.maxParticipants} Players`;
+      }
+    }
+    
     switch (status) {
       case 'pending': return 'Pending';
       case 'accepted': return 'Accepted';
@@ -108,6 +127,24 @@ const ChallengeCard = ({ challenge, currentUser, onAccept, onExtend, onCancel, s
       case 'cancelled': return 'Cancelled';
       default: return status;
     }
+  };
+
+  const getChallengeTypeDisplay = () => {
+    if (isAdminChallenge) {
+      return {
+        text: `Admin ${challenge.playerCount}-Player`,
+        color: 'text-purple-400',
+        bg: 'bg-purple-400/10',
+        icon: '👑'
+      };
+    }
+    
+    return {
+      text: `${challenge.playerCount || 2}-Player`,
+      color: 'text-blue-400',
+      bg: 'bg-blue-400/10',
+      icon: '👤'
+    };
   };
 
   return (
@@ -164,7 +201,7 @@ const ChallengeCard = ({ challenge, currentUser, onAccept, onExtend, onCancel, s
         </div>
 
         {/* Participant Count */}
-        {showParticipantCount && (
+        {challenge.showParticipantCount && (
           <div className="flex items-center gap-2 p-3 bg-dark-700 rounded-lg">
             <FaUser className="text-blue-400" size={20} />
             <div className="flex-1">
@@ -225,19 +262,28 @@ const ChallengeCard = ({ challenge, currentUser, onAccept, onExtend, onCancel, s
             </div>
           </div>
 
-         {/* Winning Prize */}
-         <div className="flex items-center gap-2 p-3 bg-dark-700 rounded-lg">
-           <FaTrophy className="text-green-400" />
-           <div className="flex-1">
-             <p className="text-sm text-dark-300">Winning Prize</p>
-             <p className="font-medium text-green-400">
-               ৳{challenge.playerCount === 4 ? Math.round(challenge.betAmount * 3) : Math.round(challenge.betAmount * 1.5)}
-             </p>
-             <p className="text-xs text-dark-400">
-               {challenge.playerCount === 4 ? '4 players × ৳' + challenge.betAmount : '2 players × ৳' + challenge.betAmount}
-             </p>
-           </div>
-         </div>
+              {/* Winning Prize */}
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-400">
+                  ৳{challenge.playerCount === 50 ? 
+                     Math.round(challenge.betAmount * 50 * 0.6) : 
+                     challenge.playerCount === 8 ? 
+                     Math.round(challenge.betAmount * 4) :
+                     challenge.playerCount === 4 ? 
+                     Math.round(challenge.betAmount * 3) : 
+                     Math.round(challenge.betAmount * 1.5)}
+                </div>
+                <p className="text-sm text-dark-300">Winning Prize</p>
+                <p className="text-xs text-dark-400">
+                  {challenge.playerCount === 50 ? 
+                   `60% of total entry fees (৳${challenge.betAmount * 50})` :
+                   challenge.playerCount === 8 ? 
+                   `8 players × ৳${challenge.betAmount}` :
+                   challenge.playerCount === 4 ? 
+                   `4 players × ৳${challenge.betAmount}` : 
+                   `2 players × ৳${challenge.betAmount}`}
+                </p>
+              </div>
 
           {/* Room Code Section */}
           {canSeeRoomCode && (
@@ -321,7 +367,7 @@ const ChallengeCard = ({ challenge, currentUser, onAccept, onExtend, onCancel, s
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => onAccept(challenge._id)}
+              onClick={handleAccept}
               className="btn-primary flex-1 flex items-center justify-center gap-2"
             >
               <FaCheck />
@@ -358,7 +404,7 @@ const ChallengeCard = ({ challenge, currentUser, onAccept, onExtend, onCancel, s
         {isExpired && challenge.status === 'pending' && (
           <div className="p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
             <p className="text-red-400 text-sm text-center">
-              This challenge has expired. {isChallenger ? 'You can extend the time or cancel it.' : 'It is no longer available for acceptance.'}
+              This challenge has expired. {challenge.challenger && challenge.challenger._id === challenge.currentUser?.id ? 'You can extend the time or cancel it.' : 'It is no longer available for acceptance.'}
             </p>
           </div>
         )}

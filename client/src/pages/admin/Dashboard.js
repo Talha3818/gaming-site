@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FaUsers, FaGamepad, FaTrophy, FaCoins, FaChartLine, FaCalendarAlt, FaUserFriends, FaMoneyBillWave, FaClock, FaHeadset } from 'react-icons/fa';
+import { FaUsers, FaGamepad, FaTrophy, FaCoins, FaChartLine, FaCalendarAlt, FaUserFriends, FaMoneyBillWave, FaClock, FaHeadset, FaCog } from 'react-icons/fa';
 import { useQuery } from 'react-query';
 import { adminAPI } from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';

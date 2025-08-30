@@ -44,19 +44,6 @@ app.use(limiter);
 // Serve static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Make io available to routes
-app.set('io', io);
-
-// Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/games', require('./routes/games'));
-app.use('/api/challenges', require('./routes/challenges'));
-app.use('/api/payments', require('./routes/payments'));
-app.use('/api/withdrawals', require('./routes/withdrawals'));
-app.use('/api/admin', require('./routes/admin'));
-app.use('/api/helpline', require('./routes/helpline'));
-app.use('/api/test', require('./routes/test-upload'));
-
 // Socket.IO connection handling
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
@@ -74,8 +61,12 @@ io.on('connection', (socket) => {
 
   // Handle challenge acceptance
   socket.on('challenge-accepted', (data) => {
-    io.to(`user-${data.challengerId}`).emit('challenge-accepted', data);
-    io.to(`user-${data.accepterId}`).emit('challenge-accepted', data);
+    io.emit('challenge-accepted', data);
+  });
+
+  // Handle admin challenge notifications
+  socket.on('new-admin-challenge', (data) => {
+    io.emit('new-admin-challenge', data);
   });
 
   // Handle helpline messages
@@ -104,6 +95,19 @@ io.on('connection', (socket) => {
     console.log('User disconnected:', socket.id);
   });
 });
+
+// Make io instance available to routes
+app.set('io', io);
+
+// Routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/games', require('./routes/games'));
+app.use('/api/challenges', require('./routes/challenges'));
+app.use('/api/payments', require('./routes/payments'));
+app.use('/api/withdrawals', require('./routes/withdrawals'));
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/helpline', require('./routes/helpline'));
+app.use('/api/test', require('./routes/test-upload'));
 
 // Serve React app only if public directory exists
 const publicPath = path.join(__dirname, 'public');

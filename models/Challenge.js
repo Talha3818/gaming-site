@@ -105,9 +105,17 @@ const challengeSchema = new mongoose.Schema({
   },
   playerCount: {
     type: Number,
-    enum: [2, 4],
-    default: 2,
-    required: true
+    required: true,
+    enum: [2, 4, 8, 50],
+    default: 2
+  },
+  
+  // Field for 50-player challenges
+  isLargeMatch: {
+    type: Boolean,
+    default: function() {
+      return this.playerCount === 50;
+    }
   },
   participants: [{
     user: {
@@ -181,6 +189,13 @@ challengeSchema.methods.acceptChallenge = async function(userId) {
     throw new Error('Challenge is already full');
   }
 
+  // For admin-created challenges, validate game restrictions
+  if (this.isAdminCreated && this.playerCount === 4) {
+    if (!['PUBG', 'Free Fire'].includes(this.game)) {
+      throw new Error('4-player challenges are only available for PUBG and Free Fire games');
+    }
+  }
+
   // Add user to participants
   this.participants.push({
     user: userId,
@@ -244,8 +259,18 @@ challengeSchema.methods.completeMatch = async function(winnerIds, loserIds, winn
 
   // Calculate total pot based on player count
   let totalPot;
-  if (this.playerCount === 4) {
+  if (this.playerCount === 50) {
+    // For 50-player challenges: 60% of total entry fees to winner
+    const totalEntryFees = this.betAmount * this.participants.length;
+    totalPot = Math.round(totalEntryFees * 0.6); // 60% to winner
+    this.actualEntryFees = totalEntryFees;
+    
+    // Update match duration based on participant count
+    this.matchDuration = this.calculateDynamicDuration();
+  } else if (this.playerCount === 4) {
     totalPot = Math.round(this.betAmount * 3); // 4 players * betAmount * 0.75
+  } else if (this.playerCount === 8) {
+    totalPot = Math.round(this.betAmount * 4); // 8 players * betAmount * 0.75
   } else {
     totalPot = Math.round(this.betAmount * 1.5); // 2 players * betAmount * 0.75
   }
@@ -296,6 +321,37 @@ challengeSchema.methods.completeMatch = async function(winnerIds, loserIds, winn
     winnerCount: winners.length,
     loserCount: losers.length
   };
+};
+
+// Method to calculate potential prize for display purposes
+challengeSchema.methods.calculatePotentialPrize = function() {
+  if (this.playerCount === 50) {
+    // For 50-player challenges: 60% of total entry fees
+    const totalEntryFees = this.betAmount * 50; // Assuming all slots filled
+    return Math.round(totalEntryFees * 0.6);
+  } else if (this.playerCount === 8) {
+    return Math.round(this.betAmount * 4); // 8 players * betAmount * 0.75
+  } else if (this.playerCount === 4) {
+    return Math.round(this.betAmount * 3); // 4 players * betAmount * 0.75
+  } else {
+    return Math.round(this.betAmount * 1.5); // 2 players * betAmount * 0.75
+  }
+};
+
+// Method to calculate dynamic match duration for 50-player challenges
+challengeSchema.methods.calculateDynamicDuration = function() {
+  if (this.playerCount === 50) {
+    const participantCount = this.participants ? this.participants.length : 0;
+    
+    // Base duration: 30 minutes
+    // Add 2 minutes per participant (minimum 10, maximum 50)
+    const baseDuration = 30;
+    const participantBonus = Math.min(Math.max(participantCount, 10), 50) * 2;
+    
+    return Math.min(baseDuration + participantBonus, 120); // Cap at 2 hours
+  }
+  
+  return this.matchDuration || 30; // Return fixed duration for other challenges
 };
 
 // Method to dispute match
@@ -421,8 +477,13 @@ challengeSchema.methods.getNextAvailableTime = async function() {
   return suggestedTime;
 };
 
-// Method to check if match is ready to start
+// Method to check if challenge is ready to start
 challengeSchema.methods.isReadyToStart = function() {
+  // For admin-created challenges, check if all participants have joined
+  if (this.isAdminCreated) {
+    return this.participants.length === this.maxParticipants && this.status === 'accepted';
+  }
+  
   const now = new Date();
   const matchStartTime = new Date(this.scheduledMatchTime);
   const timeUntilMatch = matchStartTime - now;

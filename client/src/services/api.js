@@ -101,40 +101,38 @@ export const gamesAPI = {
 
 // Challenges API
 export const challengesAPI = {
-  getChallenges: (params = {}) => 
-    api.get('/challenges', { params }),
+  getChallenges: (page = 1, limit = 10, game = '', status = '') => 
+    api.get('/challenges', { params: { page, limit, game, status } }),
   
-  getMyChallenges: () => 
-    api.get('/challenges/my-challenges'),
+  getMyChallenges: (page = 1, limit = 10, status = '') => 
+    api.get('/challenges/my-challenges', { params: { page, limit, status } }),
   
-  createChallenge: (payload) => 
-    api.post('/challenges', payload),
+  getAdminChallenges: (page = 1, limit = 10, game = '') => 
+    api.get('/challenges/admin-challenges', { params: { page, limit, game } }),
+  
+  getChallenge: (challengeId) => 
+    api.get(`/challenges/${challengeId}`),
+  
+  createChallenge: (challengeData) => 
+    api.post('/challenges', challengeData),
   
   acceptChallenge: (challengeId) => 
     api.post(`/challenges/${challengeId}/accept`),
   
+  submitResult: (challengeId, resultData) => 
+    api.post(`/challenges/${challengeId}/result`, resultData),
+  
+  extendChallenge: (challengeId, hours = 24) => 
+    api.post(`/challenges/${challengeId}/extend`, { hours }),
+  
+  cancelChallenge: (challengeId) => 
+    api.post(`/challenges/${challengeId}/cancel`),
+  
   startMatch: (challengeId, roomCode) => 
     api.post(`/challenges/${challengeId}/start`, { roomCode }),
   
-  submitResult: (challengeId, winnerScreenshot) => 
-    api.post(`/challenges/${challengeId}/result`, { winnerScreenshot }),
-  
   disputeMatch: (challengeId, reason) => 
-    api.post(`/challenges/${challengeId}/dispute`, { reason }),
-  
-  cancelChallenge: (challengeId) => 
-    api.delete(`/challenges/${challengeId}`),
-  
-  extendChallenge: (challengeId, hours) => 
-    api.put(`/challenges/${challengeId}/extend`, { hours }),
-  
-  submitProof: (challengeId, file) => {
-    const formData = new FormData();
-    formData.append('proof', file);
-    return api.post(`/challenges/${challengeId}/submit-proof`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-  },
+    api.post(`/challenges/${challengeId}/dispute`, { reason })
 };
 
 // Payment API
@@ -233,6 +231,7 @@ export const adminAPI = {
   getSystemSetting: (key) => api.get(`/admin/settings/${key}`),
   updateSystemSetting: (key, data) => api.put(`/admin/settings/${key}`, data),
   deleteSystemSetting: (key) => api.delete(`/admin/settings/${key}`),
+  testSystemSettings: () => api.get('/admin/settings-test'),
   
   // Challenges
   getChallenges: (page = 1, limit = 10, status = '') => 
